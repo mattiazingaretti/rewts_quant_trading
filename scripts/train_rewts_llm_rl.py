@@ -16,12 +16,12 @@ from src.llm_agents.strategist_agent import StrategistAgent
 from src.llm_agents.analyst_agent import AnalystAgent
 from src.rl_agents.trading_env import TradingEnv
 from src.hybrid_model.ensemble_controller import ReWTSEnsembleController
+from src.utils.data_utils import load_market_data, load_news_data, filter_news_by_period
 
 def load_data(ticker, config):
     """Carica dati preprocessati"""
-    market_df = pd.read_csv(f"data/processed/{ticker}_full_data.csv", index_col=0, parse_dates=True)
-    news_df = pd.read_csv(f"data/processed/{ticker}_news.csv", index_col=0, parse_dates=True)
-
+    market_df = load_market_data(ticker)
+    news_df = load_news_data(ticker)
     return market_df, news_df
 
 def precompute_llm_strategies(ticker, market_df, news_df, config):
@@ -46,13 +46,24 @@ def precompute_llm_strategies(ticker, market_df, news_df, config):
 
         # Dati per questa strategia
         period_data = market_df.iloc[start_idx:end_idx]
-        period_news = news_df[
-            (news_df.index >= period_data.index[0]) &
-            (news_df.index <= period_data.index[-1])
-        ]
+
+        # Filter news for this period using utility function
+        period_news = filter_news_by_period(
+            news_df,
+            period_data.index[0],
+            period_data.index[-1]
+        )
 
         # Processa news con Analyst Agent
-        news_signals = analyst.process_news(period_news.to_dict('records'))
+        if len(period_news) > 0:
+            news_signals = analyst.process_news(period_news.to_dict('records'))
+        else:
+            # No news available for this period
+            news_signals = {
+                'sentiment': 'neutral',
+                'confidence': 0.5,
+                'key_topics': []
+            }
 
         # Prepara input per Strategist
         market_data = {

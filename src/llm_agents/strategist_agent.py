@@ -293,8 +293,10 @@ Output (JSON format):
         data['spx_slope'] = macro_data.get('SPX_Slope', 0)
         data['vix_close'] = macro_data.get('VIX_Close', 0)
         data['vix_slope'] = macro_data.get('VIX_Slope', 0)
-        data.update({k: v for k, v in macro_data.items()
-                    if k.startswith(('GDP', 'PMI', 'PPI', 'Treasury'))})
+        data['gdp_qoq'] = macro_data.get('GDP_QoQ', 0)
+        data['pmi'] = macro_data.get('PMI', 50.0)
+        data['ppi_yoy'] = macro_data.get('PPI_YoY', 0)
+        data['treasury_yoy'] = macro_data.get('Treasury_YoY', 0)
 
         # News
         data['news_sentiment'] = news_signals.get('sentiment', 0)

@@ -155,8 +155,14 @@ class DataDownloader:
             # News (mock per ora)
             news_df = self.create_mock_news_data(ticker, market_df)
 
-            # Drop NaN rows
-            market_df = market_df.dropna()
+            # Forward-fill per SPX/VIX e fundamentals
+            market_df['SPX_Close'] = market_df['SPX_Close'].ffill()
+            market_df['VIX_Close'] = market_df['VIX_Close'].ffill()
+
+            # Drop NaN solo per colonne critiche (price, volume, indicators)
+            # Mantieni righe anche se fundamentals mancano
+            critical_cols = ['Close', 'Volume', 'SMA_20', 'SMA_50', 'RSI', 'MACD']
+            market_df = market_df.dropna(subset=critical_cols)
 
             # Salva
             datasets[ticker] = {
