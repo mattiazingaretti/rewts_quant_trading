@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+venv_rewts_llm/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.example
+
+# Data files
+data/raw/*
+data/processed/*
+data/llm_strategies/*
+
+# Model files
+models/*
+*.pt
+*.pkl
+*.pth
+
+# Results
+results/metrics/*
+results/visualizations/*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/llm_strategies/.gitkeep
+!models/.gitkeep
+!results/metrics/.gitkeep
+!results/visualizations/.gitkeep
