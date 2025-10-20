@@ -25,6 +25,7 @@ class StrategistAgent:
         self.model_name = config.get('llm_model', 'gemini-2.0-flash-exp')
         self.temperature = config.get('temperature', 0.0)
         self.seed = config.get('seed', 49)
+        self.project_id = config.get('project_id')  # Google AI Studio project ID
 
         # Configura Google Gemini API
         api_key = config.get('gemini_api_key') or os.getenv('GEMINI_API_KEY')
@@ -215,7 +216,15 @@ Output (JSON format):
 
         try:
             # Chiamata a Gemini
-            response = self.model.generate_content(prompt)
+            # Use project ID for paid tier if provided
+            request_options = {}
+            if self.project_id:
+                request_options = {"timeout": 600}  # 10 min timeout for paid tier
+
+            response = self.model.generate_content(
+                prompt,
+                request_options=request_options if request_options else None
+            )
 
             # Parse response
             strategy_json = json.loads(response.text)
