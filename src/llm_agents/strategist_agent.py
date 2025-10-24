@@ -32,7 +32,15 @@ class StrategistAgent:
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in config or environment")
 
-        genai.configure(api_key=api_key)
+        # Configure with project ID for paid tier quota
+        if self.project_id:
+            from google.api_core.client_options import ClientOptions
+            client_options = ClientOptions(quota_project_id=self.project_id)
+            genai.configure(api_key=api_key, client_options=client_options)
+            print(f"✓ Strategist Agent configured with paid tier project: {self.project_id}")
+        else:
+            genai.configure(api_key=api_key)
+            print("⚠ Strategist Agent using free tier (no project_id provided)")
 
         # Inizializza il modello
         generation_config = {
@@ -215,15 +223,10 @@ Output (JSON format):
         prompt = self.prompt_template.format(**prompt_data)
 
         try:
-            # Chiamata a Gemini
-            # Use project ID for paid tier if provided
-            request_options = {}
-            if self.project_id:
-                request_options = {"timeout": 600}  # 10 min timeout for paid tier
-
+            # Chiamata a Gemini (project ID già configurato in __init__)
             response = self.model.generate_content(
                 prompt,
-                request_options=request_options if request_options else None
+                request_options={"timeout": 600}  # 10 min timeout
             )
 
             # Parse response
