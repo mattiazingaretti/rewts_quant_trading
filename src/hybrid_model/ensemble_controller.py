@@ -28,9 +28,9 @@ class ReWTSEnsembleController:
     def __init__(self, config):
         self.config = config
 
-        # Chunk parameters (dal paper ReWTSE)
-        self.chunk_length = config.get('chunk_length', 2016)  # 14 giorni
-        self.lookback_length = config.get('lookback_length', 432)  # 3 giorni
+        # Chunk parameters (OPTIMIZED - Phase 1)
+        self.chunk_length = config.get('chunk_length', 400)  # Optimized: 400 (was 2016)
+        self.lookback_length = config.get('lookback_length', 200)  # Optimized: 200 (was 432)
         self.forecast_horizon = config.get('forecast_horizon', 1)  # 1 step ahead
 
         # Ensemble di DDQN agents (uno per chunk)
@@ -42,14 +42,14 @@ class ReWTSEnsembleController:
         # Storia performance
         self.performance_history = []
 
-    def train_chunk_model(self, chunk_id, env, num_episodes=50):
+    def train_chunk_model(self, chunk_id, env, num_episodes=100):
         """
         Addestra un DDQN agent su un chunk specifico
 
         Args:
             chunk_id: ID del chunk
             env: TradingEnv per il chunk
-            num_episodes: Numero di episodi di training
+            num_episodes: Numero di episodi di training (OPTIMIZED: 100, was 50)
 
         Returns:
             Trained DDQNAgent

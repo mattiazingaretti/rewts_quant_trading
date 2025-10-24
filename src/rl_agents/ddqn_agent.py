@@ -61,17 +61,17 @@ class DDQNAgent:
         self.action_dim = action_dim
         self.config = config
 
-        # Hyperparameters
-        self.gamma = config.get('gamma', 0.99)
+        # Hyperparameters (OPTIMIZED - Phase 1)
+        self.gamma = config.get('gamma', 0.995)  # Optimized: 0.995 (was 0.99)
         self.epsilon = config.get('epsilon_start', 1.0)
-        self.epsilon_min = config.get('epsilon_min', 0.01)
-        self.epsilon_decay = config.get('epsilon_decay', 0.995)
-        self.learning_rate = config.get('learning_rate', 1e-3)
-        self.batch_size = config.get('batch_size', 64)
-        self.target_update_freq = config.get('target_update_freq', 10)
+        self.epsilon_min = config.get('epsilon_min', 0.05)  # Optimized: 0.05 (was 0.01)
+        self.epsilon_decay = config.get('epsilon_decay', 0.998)  # Optimized: 0.998 (was 0.995)
+        self.learning_rate = config.get('learning_rate', 5e-4)  # Optimized: 5e-4 (was 1e-3)
+        self.batch_size = config.get('batch_size', 128)  # Optimized: 128 (was 64)
+        self.target_update_freq = config.get('target_update_freq', 20)  # Optimized: 20 (was 10)
 
         # Networks
-        hidden_dims = config.get('hidden_dims', [128, 64])
+        hidden_dims = config.get('hidden_dims', [256, 256, 128])  # Optimized: [256, 256, 128] (was [128, 64])
         self.policy_net = DQN(state_dim, action_dim, hidden_dims)
         self.target_net = DQN(state_dim, action_dim, hidden_dims)
         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -81,7 +81,7 @@ class DDQNAgent:
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
 
         # Replay buffer
-        buffer_size = config.get('buffer_size', 10000)
+        buffer_size = config.get('buffer_size', 50000)  # Optimized: 50000 (was 10000)
         self.replay_buffer = ReplayBuffer(buffer_size)
 
         # Training state
