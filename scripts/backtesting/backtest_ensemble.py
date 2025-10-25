@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import pickle
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 import sys
 import os
 
@@ -14,20 +13,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.rl_agents.trading_env import TradingEnv
-
-def calculate_sharpe_ratio(returns, risk_free_rate=0.0, periods_per_year=252):
-    """Calcola Sharpe Ratio annualizzato"""
-    if len(returns) == 0 or returns.std() == 0:
-        return 0.0
-    excess_returns = returns - risk_free_rate
-    return np.sqrt(periods_per_year) * (excess_returns.mean() / excess_returns.std())
-
-def calculate_max_drawdown(portfolio_values):
-    """Calcola Maximum Drawdown"""
-    cumulative = pd.Series(portfolio_values)
-    running_max = cumulative.cummax()
-    drawdown = (cumulative - running_max) / running_max
-    return drawdown.min()
+from backtesting.backtest_utils import (
+    calculate_comprehensive_metrics,
+    plot_backtest_results,
+    save_backtest_report,
+    print_backtest_summary
+)
 
 def backtest_ensemble(ticker, ensemble, market_df, strategies, config):
     """
@@ -109,71 +100,20 @@ def backtest_ensemble(ticker, ensemble, market_df, strategies, config):
             step += 1
             pbar.update(1)
 
-    # Calcola metriche
+    # Calcola metriche usando utility condivisa
     portfolio_values = np.array(portfolio_values)
-    returns = np.diff(portfolio_values) / portfolio_values[:-1]
-    returns = returns[np.isfinite(returns)]  # Remove any inf/nan
+    metrics = calculate_comprehensive_metrics(portfolio_values, test_env.initial_balance)
 
-    sharpe_ratio = calculate_sharpe_ratio(returns)
-    max_drawdown = calculate_max_drawdown(portfolio_values)
-    cumulative_return = (portfolio_values[-1] / portfolio_values[0]) - 1
+    # Aggiungi dati specifici per plotting
+    metrics['portfolio_values'] = portfolio_values
+    metrics['actions'] = actions_taken
+    metrics['weights_history'] = weights_history
 
-    metrics = {
-        'sharpe_ratio': sharpe_ratio,
-        'max_drawdown': max_drawdown,
-        'cumulative_return': cumulative_return,
-        'final_portfolio_value': portfolio_values[-1],
-        'portfolio_values': portfolio_values,
-        'actions': actions_taken,
-        'weights_history': weights_history
-    }
-
-    print(f"\n{'='*60}")
-    print(f"Backtest Results for {ticker}")
-    print(f"{'='*60}")
-    print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
-    print(f"Max Drawdown: {max_drawdown:.4f}")
-    print(f"Cumulative Return: {cumulative_return:.2%}")
-    print(f"Final Portfolio Value: ${portfolio_values[-1]:.2f}")
+    # Print summary
+    print_backtest_summary(ticker, metrics, test_env.initial_balance)
 
     return metrics
 
-def plot_results(ticker, metrics):
-    """Visualizza risultati backtest"""
-
-    fig, axes = plt.subplots(3, 1, figsize=(14, 10))
-
-    # Portfolio value
-    axes[0].plot(metrics['portfolio_values'])
-    axes[0].set_title(f"{ticker} - Portfolio Value")
-    axes[0].set_ylabel("Value ($)")
-    axes[0].grid(True)
-
-    # Actions
-    actions = np.array(metrics['actions'])
-    axes[1].scatter(range(len(actions)), actions, c=actions, cmap='RdYlGn', alpha=0.6)
-    axes[1].set_title(f"{ticker} - Actions (0=SHORT, 1=HOLD, 2=LONG)")
-    axes[1].set_ylabel("Action")
-    axes[1].set_ylim(-0.5, 2.5)
-    axes[1].grid(True)
-
-    # Weights evolution
-    weights_history = np.array(metrics['weights_history'])
-    if weights_history.ndim > 1 and weights_history.shape[1] > 0:
-        for i in range(weights_history.shape[1]):
-            axes[2].plot(weights_history[:, i], label=f"Model {i+1}", alpha=0.7)
-        axes[2].legend(loc='upper right')
-    axes[2].set_title(f"{ticker} - Model Weights Over Time")
-    axes[2].set_ylabel("Weight")
-    axes[2].set_xlabel("Time Step")
-    axes[2].grid(True)
-
-    plt.tight_layout()
-    os.makedirs('results/visualizations', exist_ok=True)
-    plt.savefig(f"results/visualizations/{ticker}_backtest.png", dpi=300)
-    plt.close()
-
-    print(f"✓ Plot saved to results/visualizations/{ticker}_backtest.png")
 
 def main():
     """Main backtesting pipeline"""
@@ -215,29 +155,23 @@ def main():
         if metrics:
             all_metrics[ticker] = metrics
 
-            # Plot
-            plot_results(ticker, metrics)
+            # Plot usando utility condivisa
+            plot_backtest_results(ticker, metrics)
 
-    # Summary table
+    # Summary table usando utility condivisa
     if all_metrics:
-        print(f"\n{'='*60}")
-        print("Summary Across All Tickers")
-        print(f"{'='*60}")
-
-        summary_df = pd.DataFrame({
-            ticker: {
-                'Sharpe Ratio': metrics['sharpe_ratio'],
-                'Max Drawdown': metrics['max_drawdown'],
-                'Cumulative Return': metrics['cumulative_return']
+        # Prepara risultati nel formato atteso da save_backtest_report
+        results = [
+            {
+                'ticker': ticker,
+                'initial_balance': config['trading_env']['initial_balance'],
+                'metrics': metrics,
+                'portfolio_history': metrics['portfolio_values']
             }
             for ticker, metrics in all_metrics.items()
-        }).T
+        ]
 
-        print(summary_df)
-        os.makedirs('results/metrics', exist_ok=True)
-        summary_df.to_csv("results/metrics/summary_metrics.csv")
-
-        print(f"\n✓ Summary saved to results/metrics/summary_metrics.csv")
+        save_backtest_report(results, 'results/metrics/summary_metrics.csv')
 
 if __name__ == '__main__':
     main()

@@ -12,7 +12,7 @@ tickers:
 # Date range per i dati
 data:
   start_date: "2012-01-01"
-  end_date: "2020-12-31"
+  end_date: "2024-12-31"
 
 # Configurazione LLM (Google Gemini)
 llm:
@@ -20,6 +20,7 @@ llm:
   temperature: 0.0
   seed: 49
   gemini_api_key: ${GEMINI_API_KEY}  # Da environment variable
+  project_id: "rewts-quant-trading"  # GCP project ID per paid tier quota
 
 # Configurazione ReWTSE
 rewts:

@@ -1,0 +1,36 @@
+# Dockerfile for Training on GCP Compute Engine with GPU
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Google Cloud SDK for storage access
+RUN pip install --no-cache-dir google-cloud-storage
+
+# Copy entire project
+COPY . .
+
+# Environment variables (will be overridden at runtime)
+ENV GEMINI_API_KEY=""
+ENV GCS_BUCKET="rewts-trading-data"
+ENV PYTHONUNBUFFERED=1
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import torch; print(torch.cuda.is_available())" || exit 1
+
+# Default command
+ENTRYPOINT ["python", "scripts/train_rewts_llm_rl.py"]

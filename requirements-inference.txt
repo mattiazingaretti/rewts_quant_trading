@@ -1,0 +1,29 @@
+# Lightweight requirements for inference/backtesting (no GPU needed)
+
+# Core ML (CPU-only)
+torch>=2.0.0
+numpy>=1.23.0
+pandas>=1.5.0
+
+# Google Cloud
+google-cloud-storage>=2.10.0
+
+# Web framework
+flask>=2.3.0
+gunicorn>=21.0.0
+
+# Configuration
+pyyaml>=6.0
+
+# Optimization (for ReWTSE QP)
+cvxopt>=1.3.0
+
+# Progress
+tqdm>=4.64.0
+
+# Financial data (if needed for live data)
+yfinance>=0.2.0
+
+# Visualization (optional for API)
+matplotlib>=3.6.0
+seaborn>=0.12.0

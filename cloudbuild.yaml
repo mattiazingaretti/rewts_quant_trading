@@ -1,0 +1,36 @@
+# Cloud Build configuration for CI/CD
+# Triggered automatically on git push to main branch
+# Builds and pushes training Docker image only
+
+steps:
+  # Build training image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-training'
+    args: [
+      'build',
+      '-f', 'docker/Dockerfile.training',
+      '-t', 'gcr.io/$PROJECT_ID/training:$SHORT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/training:$BRANCH_NAME',
+      '-t', 'gcr.io/$PROJECT_ID/training:latest',
+      '.'
+    ]
+
+  # Push training image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-training'
+    args: ['push', '--all-tags', 'gcr.io/$PROJECT_ID/training']
+    waitFor: ['build-training']
+
+# Store built images
+images:
+  - 'gcr.io/$PROJECT_ID/training:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/training:$BRANCH_NAME'
+  - 'gcr.io/$PROJECT_ID/training:latest'
+
+# Build options
+options:
+  machineType: 'N1_HIGHCPU_8'  # Faster builds
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout (20 minutes)
+timeout: 1200s
