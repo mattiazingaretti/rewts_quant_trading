@@ -277,7 +277,7 @@ Output (JSON format):
 
         # Last strategy (per ICM)
         if last_strategy:
-            data['last_returns'] = last_strategy.__dict__.get('returns', 'N/A')
+            data['last_returns'] = getattr(last_strategy, 'returns', 'N/A')
             data['last_action'] = 'LONG' if last_strategy.direction == 1 else 'SHORT'
             data['last_rationale'] = last_strategy.explanation
         else:

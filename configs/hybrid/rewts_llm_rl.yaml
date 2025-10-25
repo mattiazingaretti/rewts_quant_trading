@@ -16,7 +16,7 @@ data:
 
 # Configurazione LLM (Google Gemini)
 llm:
-  llm_model: "gemini-1.5-flash"  # Gemini 1.5 Flash (paid tier model)
+  llm_model: "gemini-2.5-flash"  # Gemini 2.5 Flash
   temperature: 0.0
   seed: 49
   gemini_api_key: ${GEMINI_API_KEY}  # Da environment variable
@@ -49,4 +49,10 @@ trading_env:
   max_position: 1.0  # No leverage
 
 # Strategia LLM frequency
-strategy_frequency: 20  # Strategia mensile (20 trading days)
+strategy_frequency: 25  # Strategia mensile (~25 trading days, ridotto del 20%)
+
+# Parallel execution settings
+# PAID TIER: 1000 RPM limit - optimized for speed
+parallel_workers: 8  # Numero di workers paralleli
+max_requests_per_second: 8.0  # 8 req/s = 480 RPM (safe margin under 1000 RPM limit)
+skip_news_processing: false  # News processing enabled (full strategy quality)

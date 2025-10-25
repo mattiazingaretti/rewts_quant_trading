@@ -13,11 +13,15 @@ import yaml
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.llm_agents.strategist_agent import StrategistAgent
+from src.llm_agents.strategist_agent import StrategistAgent, TradingStrategy
 from src.llm_agents.analyst_agent import AnalystAgent
 from src.rl_agents.trading_env import TradingEnv
 from src.hybrid_model.ensemble_controller import ReWTSEnsembleController
 from src.utils.data_utils import load_market_data, load_news_data, filter_news_by_period
+from src.utils.strategy_cache import StrategyCache
+from src.utils.rate_limiter import RateLimiter, RequestMonitor, retry_with_exponential_backoff
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 def load_data(ticker, config):
     """Carica dati preprocessati"""
@@ -26,45 +30,53 @@ def load_data(ticker, config):
     return market_df, news_df
 
 def precompute_llm_strategies(ticker, market_df, news_df, config):
-    """Pre-computa le strategie LLM per tutto il periodo"""
+    """Pre-computa le strategie LLM per tutto il periodo con parallelizzazione"""
 
     print(f"\n{'='*60}")
     print(f"Pre-computing LLM Strategies for {ticker}")
     print(f"{'='*60}")
 
+    # Inizializza cache
+    cache = StrategyCache()
+    cache_stats = cache.get_stats()
+    print(f"Cache initialized: {cache_stats['total_entries']} entries, {cache_stats['cache_file_size_kb']} KB")
+
+    # Inizializza rate limiter e monitor
+    max_workers = config.get('parallel_workers', 8)
+    max_requests_per_second = config.get('max_requests_per_second', 8.0)
+
+    rate_limiter = RateLimiter(max_per_second=max_requests_per_second)
+    monitor = RequestMonitor(window_seconds=60, limit_rpm=1000)
+
+    skip_news = config.get('skip_news_processing', False)
+    print(f"Parallel execution: {max_workers} workers, {max_requests_per_second} req/s max")
+    if skip_news:
+        print(f"⚠️  News processing DISABLED - using neutral sentiment (saves 50% API calls)")
+
     strategist = StrategistAgent(config['llm'])
-    analyst = AnalystAgent(config['llm'])
+    analyst = AnalystAgent(config['llm']) if not skip_news else None
 
-    strategies = []
-
-    # Genera strategie mensili (ogni 20 trading days)
+    # Genera strategie mensili
     strategy_frequency = config.get('strategy_frequency', 20)
     num_strategies = len(market_df) // strategy_frequency
 
-    for i in tqdm(range(num_strategies), desc="Generating strategies"):
+    # Prepara tutti i task params prima del loop parallelo
+    print(f"Preparing {num_strategies} strategy generation tasks...")
+    task_params = []
+
+    for i in range(num_strategies):
         start_idx = i * strategy_frequency
         end_idx = min((i + 1) * strategy_frequency, len(market_df))
 
         # Dati per questa strategia
         period_data = market_df.iloc[start_idx:end_idx]
 
-        # Filter news for this period using utility function
+        # Filter news for this period
         period_news = filter_news_by_period(
             news_df,
             period_data.index[0],
             period_data.index[-1]
         )
-
-        # Processa news con Analyst Agent
-        if len(period_news) > 0:
-            news_signals = analyst.process_news(period_news.to_dict('records'))
-        else:
-            # No news available for this period
-            news_signals = {
-                'sentiment': 'neutral',
-                'confidence': 0.5,
-                'key_topics': []
-            }
 
         # Prepara input per Strategist
         market_data = {
@@ -111,21 +123,174 @@ def precompute_llm_strategies(ticker, market_df, news_df, config):
             'Treasury_YoY': 0.0
         }
 
-        # Genera strategia
-        last_strategy = strategies[-1] if strategies else None
+        task_params.append({
+            'task_id': i,
+            'period_news': period_news,
+            'market_data': market_data,
+            'fundamentals': fundamentals,
+            'analytics': analytics,
+            'macro_data': macro_data
+        })
 
-        strategy = strategist.generate_strategy(
+    print(f"✓ Prepared {len(task_params)} tasks")
+
+    # Funzione worker per generare una singola strategia
+    def generate_single_strategy(params):
+        """Worker function per generare una strategia con rate limiting"""
+        task_id = params['task_id']
+        period_news = params['period_news']
+        market_data = params['market_data']
+        fundamentals = params['fundamentals']
+        analytics = params['analytics']
+        macro_data = params['macro_data']
+
+        # Process news (può essere cached anche questo)
+        skip_news = config.get('skip_news_processing', False)
+
+        if skip_news or len(period_news) == 0 or analyst is None:
+            # Skip news processing (risparmia API calls)
+            news_signals = {
+                'sentiment': 'neutral',
+                'confidence': 0.5,
+                'key_topics': []
+            }
+        else:
+            news_signals = analyst.process_news(period_news.to_dict('records'))
+
+        # Controlla cache
+        cached_strategy = cache.get(
+            ticker=ticker,
             market_data=market_data,
             fundamentals=fundamentals,
             analytics=analytics,
             macro_data=macro_data,
             news_signals=news_signals,
-            last_strategy=last_strategy
+            model_name=config['llm']['llm_model'],
+            temperature=config['llm']['temperature']
         )
 
-        strategies.append(strategy)
+        if cached_strategy is not None:
+            return {
+                'task_id': task_id,
+                'strategy': TradingStrategy(**cached_strategy),
+                'from_cache': True
+            }
 
-    print(f"✓ Generated {len(strategies)} strategies")
+        # Non in cache, genera con rate limiting
+        rate_limiter.wait()
+        monitor.record_request()
+
+        # Wrapper function per retry
+        def _generate():
+            return strategist.generate_strategy(
+                market_data=market_data,
+                fundamentals=fundamentals,
+                analytics=analytics,
+                macro_data=macro_data,
+                news_signals=news_signals,
+                last_strategy=None  # In parallelo non possiamo usare last_strategy
+            )
+
+        try:
+            strategy = retry_with_exponential_backoff(
+                _generate,
+                max_retries=3,
+                initial_wait=2.0,
+                max_wait=30.0
+            )
+
+            # Salva in cache
+            cache.set(
+                ticker=ticker,
+                market_data=market_data,
+                fundamentals=fundamentals,
+                analytics=analytics,
+                macro_data=macro_data,
+                news_signals=news_signals,
+                model_name=config['llm']['llm_model'],
+                temperature=config['llm']['temperature'],
+                strategy=strategy
+            )
+
+            return {
+                'task_id': task_id,
+                'strategy': strategy,
+                'from_cache': False
+            }
+
+        except Exception as e:
+            print(f"❌ Failed to generate strategy {task_id}: {e}")
+            # Fallback strategy
+            return {
+                'task_id': task_id,
+                'strategy': TradingStrategy(
+                    direction=1,
+                    confidence=1.5,
+                    strength=0.5,
+                    explanation=f'Fallback strategy due to error: {str(e)}',
+                    features_used=[],
+                    timestamp=market_data.get('timestamp', 'N/A')
+                ),
+                'from_cache': False,
+                'error': True
+            }
+
+    # Esegui in parallelo con ThreadPoolExecutor
+    print(f"\n🚀 Starting parallel strategy generation...")
+    start_time = time.time()
+
+    strategies_dict = {}
+    cache_hits = 0
+    cache_misses = 0
+    errors = 0
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit tutti i task
+        futures = {executor.submit(generate_single_strategy, params): params['task_id']
+                   for params in task_params}
+
+        # Progress bar
+        completed = 0
+        for future in as_completed(futures):
+            result = future.result()
+            strategies_dict[result['task_id']] = result['strategy']
+
+            if result['from_cache']:
+                cache_hits += 1
+            else:
+                cache_misses += 1
+
+            if result.get('error'):
+                errors += 1
+
+            completed += 1
+
+            # Print progress ogni 10 strategie
+            if completed % 10 == 0 or completed == len(task_params):
+                elapsed = time.time() - start_time
+                rate = completed / elapsed if elapsed > 0 else 0
+                eta = (len(task_params) - completed) / rate if rate > 0 else 0
+
+                print(f"Progress: {completed}/{len(task_params)} "
+                      f"({100*completed/len(task_params):.1f}%) | "
+                      f"Rate: {rate:.1f} strat/s | "
+                      f"ETA: {eta:.0f}s")
+
+                # Print monitor stats ogni 20 strategie
+                if completed % 20 == 0:
+                    monitor.print_stats()
+
+    # Riordina strategie per task_id
+    strategies = [strategies_dict[i] for i in range(len(task_params))]
+
+    elapsed_time = time.time() - start_time
+    print(f"\n✓ Generated {len(strategies)} strategies in {elapsed_time:.1f}s")
+    print(f"  Cache hits: {cache_hits} ({100*cache_hits/len(strategies):.1f}%)")
+    print(f"  Cache misses: {cache_misses} ({100*cache_misses/len(strategies):.1f}%)")
+    print(f"  Errors (fallback used): {errors}")
+    print(f"  API calls saved: {cache_hits}")
+    print(f"  Average time per strategy: {elapsed_time/len(strategies):.1f}s")
+    monitor.print_stats()
 
     # Salva strategies
     os.makedirs('data/llm_strategies', exist_ok=True)

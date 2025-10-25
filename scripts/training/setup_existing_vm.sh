@@ -113,6 +113,14 @@ gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
 "
 
 echo ""
+echo "🔑 Setting up GEMINI_API_KEY from Secret Manager..."
+gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
+  echo 'export GEMINI_API_KEY=\$(gcloud secrets versions access latest --secret=GEMINI_API_KEY 2>/dev/null)' >> ~/.bashrc && \
+  source ~/.bashrc && \
+  echo '✅ GEMINI_API_KEY configured in ~/.bashrc'
+"
+
+echo ""
 echo "✅ VM setup complete!"
 echo ""
 echo "Next steps:"
@@ -125,8 +133,9 @@ echo "   nvidia-smi"
 echo ""
 echo "3. Start training:"
 echo "   cd ~/rewts_quant_trading"
-echo "   export GEMINI_API_KEY=\$(gcloud secrets versions access latest --secret=gemini-api-key)"
 echo "   python3 scripts/training/train_rewts_llm_rl.py"
+echo ""
+echo "   (GEMINI_API_KEY is already loaded from Secret Manager)"
 echo ""
 echo "4. Monitor training:"
 echo "   watch -n 1 nvidia-smi"
