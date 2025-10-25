@@ -3,8 +3,8 @@ Trading Environment per RL Agent
 Estende il benchmark environment del paper LLM+RL
 """
 
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 import pandas as pd
 
