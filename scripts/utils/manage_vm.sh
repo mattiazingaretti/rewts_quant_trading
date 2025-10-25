@@ -36,27 +36,58 @@ list_vms() {
 
 # Get VM name from argument or auto-detect
 get_vm_name() {
-    if [ -n "$2" ]; then
-        echo "$2"
-        return
+    local command=$1
+    local vm_arg=$2
+
+    if [ -n "$vm_arg" ]; then
+        echo "$vm_arg"
+        return 0
     fi
 
-    # Check how many VMs are running
-    running_vms=$(gcloud compute instances list --filter="status=RUNNING" --format="value(name)" 2>/dev/null)
-    vm_count=$(echo "$running_vms" | grep -v '^$' | wc -l | tr -d ' ')
+    # Check how many VMs exist (for start command, check all VMs)
+    if [ "$command" = "start" ]; then
+        all_vms=$(gcloud compute instances list --filter="status!=RUNNING" --format="value(name)" 2>/dev/null)
+        vm_count=$(echo "$all_vms" | grep -v '^$' | wc -l | tr -d ' ')
 
-    if [ "$vm_count" -eq 0 ]; then
-        echo "❌ No VMs are currently running"
-        exit 1
-    elif [ "$vm_count" -eq 1 ]; then
-        echo "$running_vms"
+        if [ "$vm_count" -eq 0 ]; then
+            echo "" >&2
+            echo "❌ No stopped VMs found" >&2
+            echo "" >&2
+            list_vms >&2
+            return 1
+        elif [ "$vm_count" -eq 1 ]; then
+            echo "$all_vms"
+            return 0
+        else
+            echo "" >&2
+            echo "❌ Multiple stopped VMs found. Please specify which one:" >&2
+            list_vms >&2
+            echo "" >&2
+            echo "Usage: $0 start [vm-name]" >&2
+            return 1
+        fi
     else
-        echo ""
-        echo "❌ Multiple VMs are running. Please specify which one:"
-        list_vms
-        echo ""
-        echo "Usage: $0 $1 [vm-name]"
-        exit 1
+        # For other commands, check running VMs
+        running_vms=$(gcloud compute instances list --filter="status=RUNNING" --format="value(name)" 2>/dev/null)
+        vm_count=$(echo "$running_vms" | grep -v '^$' | wc -l | tr -d ' ')
+
+        if [ "$vm_count" -eq 0 ]; then
+            echo "" >&2
+            echo "❌ No VMs are currently running" >&2
+            echo "" >&2
+            list_vms >&2
+            return 1
+        elif [ "$vm_count" -eq 1 ]; then
+            echo "$running_vms"
+            return 0
+        else
+            echo "" >&2
+            echo "❌ Multiple VMs are running. Please specify which one:" >&2
+            list_vms >&2
+            echo "" >&2
+            echo "Usage: $0 $command [vm-name]" >&2
+            return 1
+        fi
     fi
 }
 
@@ -73,10 +104,9 @@ case $COMMAND in
         ;;
 
     start|stop|restart|status|logs|ip|delete)
-        INSTANCE_NAME=$(get_vm_name "$@")
+        INSTANCE_NAME=$(get_vm_name "$COMMAND" "$2")
 
-        if [ -z "$INSTANCE_NAME" ]; then
-            echo "❌ Could not determine VM name"
+        if [ $? -ne 0 ] || [ -z "$INSTANCE_NAME" ]; then
             exit 1
         fi
 
