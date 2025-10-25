@@ -4,6 +4,9 @@
 PROJECT_ID="rewts-quant-trading"
 ZONE="us-central1-a"
 
+# Set project (critical for correct VM access)
+gcloud config set project $PROJECT_ID 2>/dev/null
+
 usage() {
     echo "Usage: $0 {start|stop|restart|status|logs|ip|delete|list} [vm-name]"
     echo ""

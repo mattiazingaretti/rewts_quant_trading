@@ -125,18 +125,21 @@ gcloud compute ssh rewts-training-spot --zone=us-central1-a
 
 ### Step 3: Setup Environment
 ```bash
-cd /home/jupyter/rewts_quant_trading
+cd ~/rewts_quant_trading
 
 # Load API key
 export GEMINI_API_KEY=$(gcloud secrets versions access latest --secret=gemini-api-key)
 
 # Verify
 echo $GEMINI_API_KEY
+
+# Note: The project_id is automatically loaded from configs/hybrid/rewts_llm_rl.yaml
+# This ensures you're using the paid tier quota instead of free tier
 ```
 
 ### Step 4: Download Data
 ```bash
-python scripts/training/download_data.py
+python3 scripts/training/download_data.py
 
 # Expected output:
 # ✅ Downloaded AAPL: 2012-01-01 to 2020-12-31
@@ -147,9 +150,16 @@ python scripts/training/download_data.py
 
 ### Step 5: Train Models
 ```bash
-python scripts/training/train_rewts_llm_rl.py
+python3 scripts/training/train_rewts_llm_rl.py
 
 # This will run for ~18 hours
+# The script will:
+# 1. Load all tickers from configs/hybrid/rewts_llm_rl.yaml
+# 2. Use project_id for paid tier quota (higher rate limits)
+# 3. Pre-compute LLM strategies for each ticker
+# 4. Train DDQN agents for each ticker
+# 5. Save models to models/ directory
+
 # You can monitor with:
 # - watch -n 1 nvidia-smi
 # - tail -f training.log

@@ -8,6 +8,7 @@ from tqdm import tqdm
 import sys
 import os
 import pickle
+import yaml
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -186,40 +187,40 @@ def train_rewts_ensemble(ticker, market_df, strategies, config):
 
     return ensemble
 
+def load_config(config_path='configs/hybrid/rewts_llm_rl.yaml'):
+    """Load configuration from YAML file"""
+    # Get project root directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(script_dir))
+    config_file = os.path.join(project_root, config_path)
+
+    with open(config_file, 'r') as f:
+        config = yaml.safe_load(f)
+
+    # Resolve environment variables in config
+    if 'llm' in config and 'gemini_api_key' in config['llm']:
+        api_key_value = config['llm']['gemini_api_key']
+        if isinstance(api_key_value, str) and api_key_value.startswith('${') and api_key_value.endswith('}'):
+            env_var = api_key_value[2:-1]
+            config['llm']['gemini_api_key'] = os.getenv(env_var)
+
+    return config
+
 def main():
     """Main training pipeline"""
 
-    # Configurazione (usa Gemini invece di GPT)
-    config = {
-        'tickers': ['AAPL'],  # Start with one ticker for testing
-        'llm': {
-            'llm_model': 'gemini-2.0-flash-exp',  # Google Gemini 2.5 Flash
-            'temperature': 0.0,
-            'seed': 49,
-            'gemini_api_key': os.getenv('GEMINI_API_KEY')  # Leggi da environment
-        },
-        'rewts': {
-            'chunk_length': 500,  # Ridotto per testing
-            'lookback_length': 100,
-            'forecast_horizon': 1,
-            'episodes_per_chunk': 20,  # Ridotto per testing
-            'gamma': 0.99,
-            'epsilon_start': 1.0,
-            'epsilon_min': 0.01,
-            'epsilon_decay': 0.995,
-            'learning_rate': 1e-3,
-            'batch_size': 64,
-            'buffer_size': 10000,
-            'target_update_freq': 10,
-            'hidden_dims': [128, 64]
-        },
-        'trading_env': {
-            'initial_balance': 10000,
-            'transaction_cost': 0.001,
-            'max_position': 1.0
-        },
-        'strategy_frequency': 20  # Strategia mensile
-    }
+    # Load configuration from YAML file
+    print("Loading configuration from configs/hybrid/rewts_llm_rl.yaml...")
+    config = load_config()
+
+    # Print configuration summary
+    print(f"\n{'='*60}")
+    print("Configuration loaded:")
+    print(f"  Tickers: {config['tickers']}")
+    print(f"  LLM Model: {config['llm']['llm_model']}")
+    print(f"  Project ID: {config['llm'].get('project_id', 'NOT SET')}")
+    print(f"  Strategy Frequency: {config['strategy_frequency']} days")
+    print(f"{'='*60}\n")
 
     # Loop su tutti i ticker
     for ticker in config['tickers']:

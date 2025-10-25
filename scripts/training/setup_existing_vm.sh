@@ -9,11 +9,14 @@ PROJECT_ID="rewts-quant-trading"
 ZONE="us-central1-a"
 INSTANCE_NAME="rewts-training-spot"
 
+# Set project (critical for correct VM access)
+echo "Setting GCP project to $PROJECT_ID..."
+gcloud config set project $PROJECT_ID
+
 # Check if VM exists and is running
 echo "Checking VM status..."
 STATUS=$(gcloud compute instances describe $INSTANCE_NAME \
   --zone=$ZONE \
-  --project=$PROJECT_ID \
   --format='get(status)' 2>/dev/null || echo "NOT_FOUND")
 
 if [ "$STATUS" = "NOT_FOUND" ]; then
@@ -23,7 +26,7 @@ fi
 
 if [ "$STATUS" != "RUNNING" ]; then
   echo "⚠️  VM is $STATUS. Starting it..."
-  gcloud compute instances start $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID
+  gcloud compute instances start $INSTANCE_NAME --zone=$ZONE
 
   echo "⏳ Waiting for VM to start..."
   for i in {1..30}; do
@@ -39,7 +42,7 @@ fi
 # Wait for SSH to be ready
 echo "⏳ Waiting for SSH to be ready..."
 for i in {1..30}; do
-  if gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="echo 'SSH ready'" 2>/dev/null; then
+  if gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="echo 'SSH ready'" 2>/dev/null; then
     echo "✅ SSH is ready"
     break
   fi
@@ -77,11 +80,10 @@ tar -czf "$TEMP_TAR" \
 echo "  Copying to VM..."
 gcloud compute scp "$TEMP_TAR" \
   $INSTANCE_NAME:/tmp/rewts_quant_trading.tar.gz \
-  --zone=$ZONE \
-  --project=$PROJECT_ID
+  --zone=$ZONE
 
 echo "  Extracting on VM..."
-gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
+gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
   cd ~ && \
   rm -rf rewts_quant_trading && \
   tar -xzf /tmp/rewts_quant_trading.tar.gz && \
@@ -95,7 +97,7 @@ echo "✅ Files copied successfully!"
 
 echo ""
 echo "📚 Installing Python requirements on VM..."
-gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
+gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
   cd ~/rewts_quant_trading && \
   pip3 install -r requirements.txt && \
   pip3 install -e . && \
@@ -104,7 +106,7 @@ gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
 
 echo ""
 echo "📥 Downloading data from GCS (if available)..."
-gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
+gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
   cd ~/rewts_quant_trading && \
   mkdir -p data && \
   gsutil -m cp -r gs://rewts-trading-data/raw ./data/ 2>/dev/null || echo '⚠️  No data in GCS yet'
@@ -116,7 +118,7 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "1. SSH into VM:"
-echo "   gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID"
+echo "   gcloud compute ssh $INSTANCE_NAME --zone=$ZONE"
 echo ""
 echo "2. Check GPU status:"
 echo "   nvidia-smi"

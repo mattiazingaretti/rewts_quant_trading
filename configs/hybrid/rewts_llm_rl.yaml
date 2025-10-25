@@ -16,7 +16,7 @@ data:
 
 # Configurazione LLM (Google Gemini)
 llm:
-  llm_model: "gemini-2.0-flash-exp"  # Gemini 2.5 Flash
+  llm_model: "gemini-1.5-flash"  # Gemini 1.5 Flash (paid tier model)
   temperature: 0.0
   seed: 49
   gemini_api_key: ${GEMINI_API_KEY}  # Da environment variable
