@@ -1,9 +1,9 @@
 """
-LLM Agents Module
-Strategist and Analyst agents for trading strategy generation
+LLM Agents Module - DeepSeek
+Strategist and Analyst agents for trading strategy generation using DeepSeek API
 """
 
-from .strategist_agent import StrategistAgent, TradingStrategy
-from .analyst_agent import AnalystAgent, NewsFactor
+from .strategist_agent_deepseek import StrategistAgent, TradingStrategy
+from .analyst_agent_deepseek import AnalystAgent, NewsFactor
 
 __all__ = ['StrategistAgent', 'TradingStrategy', 'AnalystAgent', 'NewsFactor']

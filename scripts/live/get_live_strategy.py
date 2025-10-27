@@ -14,8 +14,8 @@ import yaml
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.llm_agents.strategist_agent import StrategistAgent
-from src.llm_agents.analyst_agent import AnalystAgent
+from src.llm_agents.strategist_agent_deepseek import StrategistAgent
+from src.llm_agents.analyst_agent_deepseek import AnalystAgent
 
 
 def fetch_latest_market_data(ticker: str, days_back: int = 30) -> pd.DataFrame:

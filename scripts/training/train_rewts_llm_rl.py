@@ -13,8 +13,8 @@ import yaml
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.llm_agents.strategist_agent import StrategistAgent, TradingStrategy
-from src.llm_agents.analyst_agent import AnalystAgent
+from src.llm_agents.strategist_agent_deepseek import StrategistAgent, TradingStrategy
+from src.llm_agents.analyst_agent_deepseek import AnalystAgent
 from src.rl_agents.trading_env import TradingEnv
 from src.hybrid_model.ensemble_controller import ReWTSEnsembleController
 from src.utils.data_utils import load_market_data, load_news_data, filter_news_by_period

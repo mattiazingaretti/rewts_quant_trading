@@ -40,8 +40,8 @@ except Exception as e:
 # 2. Test LLM imports
 print("\n2. Testing LLM agent imports...")
 try:
-    from src.llm_agents.strategist_agent import StrategistAgent
-    from src.llm_agents.analyst_agent import AnalystAgent
+    from src.llm_agents.strategist_agent_deepseek import StrategistAgent
+    from src.llm_agents.analyst_agent_deepseek import AnalystAgent
     print("   ✓ LLM agents imported successfully")
 except Exception as e:
     print(f"   ✗ Error importing LLM agents: {e}")
@@ -123,11 +123,11 @@ except Exception as e:
 
 # 7. Test API key (optional)
 print("\n7. Checking API key...")
-api_key = os.getenv('GEMINI_API_KEY')
+api_key = os.getenv('DEEPSEEK_API_KEY')
 if api_key:
-    print(f"   ✓ GEMINI_API_KEY found ({len(api_key)} chars)")
+    print(f"   ✓ DEEPSEEK_API_KEY found ({len(api_key)} chars)")
 else:
-    print("   ⚠ GEMINI_API_KEY not set (you'll be prompted in the notebook)")
+    print("   ⚠ DEEPSEEK_API_KEY not set (you'll be prompted in the notebook)")
 
 # 8. Test PyTorch
 print("\n8. Testing PyTorch...")
@@ -148,12 +148,10 @@ print("✓ All tests passed! Ready to run the training notebook.")
 print("=" * 60)
 
 print("\nNext steps:")
-print("1. Set GEMINI_API_KEY if not already set:")
-print("   export GEMINI_API_KEY='your-key-here'")
+print("1. Set DEEPSEEK_API_KEY if not already set:")
+print("   export DEEPSEEK_API_KEY='sk-your-key-here'")
 print("\n2. Start the training notebook:")
-print("   ./notebooks/start_training.sh")
-print("   or")
-print("   jupyter notebook notebooks/train_rewts_llm_rl.ipynb")
+print("   jupyter notebook notebooks/train_rewts_deepseek.ipynb")
 print("\n3. For a quick test, reduce these config values in the notebook:")
 print("   - chunk_length: 200 (instead of 500)")
 print("   - episodes_per_chunk: 10 (instead of 50)")

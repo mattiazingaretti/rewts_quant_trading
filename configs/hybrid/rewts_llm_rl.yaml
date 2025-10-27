@@ -1,4 +1,4 @@
-# Configurazione per ReWTSE-LLM-RL
+# Configurazione per ReWTSE-LLM-RL con DeepSeek
 
 # Ticker stocks da tradare
 tickers:
@@ -12,47 +12,46 @@ tickers:
 # Date range per i dati
 data:
   start_date: "2012-01-01"
-  end_date: "2024-12-31"
+  end_date: "2020-12-31"
 
-# Configurazione LLM (Google Gemini)
+# Configurazione LLM (DeepSeek)
 llm:
-  llm_model: "gemini-2.5-flash"  # Gemini 2.5 Flash
+  llm_model: "deepseek-chat"  # DeepSeek-V3
   temperature: 0.0
-  seed: 49
-  gemini_api_key: ${GEMINI_API_KEY}  # Da environment variable
-  project_id: "rewts-quant-trading"  # GCP project ID per paid tier quota
+  deepseek_api_key: "${DEEPSEEK_API_KEY}"
 
-# Configurazione ReWTSE
+# Configurazione ReWTSE (Ottimizzata per DeepSeek)
 rewts:
-  chunk_length: 2016  # 14 giorni di trading
-  lookback_length: 432  # 3 giorni di trading
+  chunk_length: 400  # ~2 trading years
+  lookback_length: 200  # ~1 trading year
   forecast_horizon: 1
-  episodes_per_chunk: 50
+  episodes_per_chunk: 100
 
-  # DDQN hyperparameters
-  gamma: 0.99
+  # DDQN hyperparameters (ottimizzati)
+  gamma: 0.995
   epsilon_start: 1.0
-  epsilon_min: 0.01
-  epsilon_decay: 0.995
-  learning_rate: 0.001
-  batch_size: 64
-  buffer_size: 10000
-  target_update_freq: 10
+  epsilon_min: 0.05
+  epsilon_decay: 0.998
+  learning_rate: 0.0005  # 5e-4
+  batch_size: 128
+  buffer_size: 50000
+  target_update_freq: 20
   hidden_dims:
+    - 256
+    - 256
     - 128
-    - 64
 
 # Configurazione Trading Environment
 trading_env:
   initial_balance: 10000
-  transaction_cost: 0.001  # 0.1%
-  max_position: 1.0  # No leverage
+  transaction_cost: 0.0015  # 0.15%
+  max_position: 0.95  # Max 95% capital in position
+  max_drawdown_limit: 0.15  # Stop trading at 15% drawdown
 
 # Strategia LLM frequency
-strategy_frequency: 25  # Strategia mensile (~25 trading days, ridotto del 20%)
+strategy_frequency: 20  # Strategia ogni 20 giorni di trading
 
 # Parallel execution settings
-# PAID TIER: 1000 RPM limit - optimized for speed
-parallel_workers: 8  # Numero di workers paralleli
-max_requests_per_second: 8.0  # 8 req/s = 480 RPM (safe margin under 1000 RPM limit)
-skip_news_processing: false  # News processing enabled (full strategy quality)
+parallel_workers: 8  # Numero di workers paralleli per LLM
+max_requests_per_second: 8.0  # 8 req/s per DeepSeek API
+skip_news_processing: false  # News processing abilitato
