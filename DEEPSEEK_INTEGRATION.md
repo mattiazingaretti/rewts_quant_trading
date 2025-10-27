@@ -75,13 +75,17 @@ Input tokens (cache HIT):  $0.028 / 1M  (10x risparmio!)
 Output tokens:             $0.42 / 1M
 ```
 
-### Training 6 Tickers (660 chiamate)
+### Training 6 Tickers (Con News Processing)
+
+**Chiamate totali**: ~1320 (110 strategie + 110 news × 6 tickers)
 
 | Scenario | Input | Output | Cache Hit | Total | vs Gemini |
 |----------|-------|--------|-----------|-------|-----------|
-| **No cache** | 0.726M | 0.231M | 0% | **$0.30** | +$0.18 (2.4x) |
-| **Cache 50%** | 0.726M | 0.231M | 50% | **$0.21** | +$0.12 (2.2x) |
-| **Cache 75%** | 0.726M | 0.231M | 75% | **$0.16** | +$0.07 (1.7x) |
+| **No cache** | 1.45M | 0.46M | 0% | **$0.60** | +$0.36 (3.0x) |
+| **Cache 50%** | 1.45M | 0.46M | 50% | **$0.42** | +$0.24 (2.5x) |
+| **Cache 75%** | 1.45M | 0.46M | 75% | **$0.32** | +$0.14 (1.8x) |
+
+**Note**: News Processing raddoppia le chiamate API ma migliora la qualità delle strategie.
 
 ### Gemini 1.5 Flash (confronto)
 
@@ -98,11 +102,11 @@ Prompt cache:  $0.01875 / 1M (75% discount)
 
 ### Confronto Annuale
 
-Training mensile (12x/anno):
+Training mensile (12x/anno) con News Processing:
 
-- **Gemini**: $1.12/anno
-- **DeepSeek**: $2.51/anno
-- **Differenza**: +$1.39/anno (poco rilevante)
+- **Gemini**: $2.16/anno
+- **DeepSeek**: $5.04/anno
+- **Differenza**: +$2.88/anno (comunque ultra-economico)
 
 ---
 

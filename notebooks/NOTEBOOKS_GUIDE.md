@@ -57,12 +57,32 @@ Due notebook per il training del sistema ReWTSE-LLM-RL, con supporto per diversi
 
 ## 🚀 Quick Start
 
+### Setup API Key (Una Volta)
+
+**Opzione A: Colab Secrets (Raccomandato)** 🔑
+```bash
+1. Apri notebook su Colab
+2. Click sull'icona 🔑 Secrets nella sidebar
+3. Add new secret:
+   - Name: GEMINI_API_KEY (o DEEPSEEK_API_KEY)
+   - Value: tua API key
+   - Enable "Notebook access"
+4. Restart runtime
+```
+
+Vedi guida dettagliata: [`COLAB_SECRETS_SETUP.md`](COLAB_SECRETS_SETUP.md)
+
+**Opzione B: Manual Input (Fallback)**
+```bash
+Il notebook chiederà la key con getpass
+```
+
 ### Opzione 1: Gemini (Raccomandato)
 
 ```bash
 # 1. Get API key: https://makersuite.google.com/app/apikey
-# 2. Open Colab: train_rewts_complete.ipynb
-# 3. Enter GEMINI_API_KEY when prompted
+# 2. Configure Colab Secret (vedi sopra) oppure skip
+# 3. Open Colab: train_rewts_complete.ipynb
 # 4. Run all cells
 ```
 
@@ -70,8 +90,8 @@ Due notebook per il training del sistema ReWTSE-LLM-RL, con supporto per diversi
 
 ```bash
 # 1. Get API key: https://platform.deepseek.com
-# 2. Open Colab: train_rewts_deepseek.ipynb
-# 3. Enter DEEPSEEK_API_KEY when prompted
+# 2. Configure Colab Secret (vedi sopra) oppure skip
+# 3. Open Colab: train_rewts_deepseek.ipynb
 # 4. Run all cells
 ```
 
