@@ -57,10 +57,30 @@ Sistema di trading ibrido che integra **ReWTSE** (ensemble temporale), **LLM Age
 │   └── hybrid_model/         # ReWTSE ensemble
 │       └── ensemble_controller.py
 ├── scripts/
-│   ├── download_data.py          # Download dataset
-│   ├── train_rewts_llm_rl.py     # Training pipeline
-│   ├── backtest_ensemble.py      # Backtesting
-│   └── run_alpaca_paper_trading.py  # Paper trading live
+│   ├── setup/              # 🔵 Setup iniziale GCP (una tantum)
+│   │   ├── 01_setup_gcp_project.sh
+│   │   ├── 02_create_storage_buckets.sh
+│   │   ├── 03_setup_secrets.sh
+│   │   ├── 04_deploy_backtesting_vm.sh
+│   │   └── verify_api_keys.py
+│   ├── training/           # 🟢 Training modelli (mensile)
+│   │   ├── download_data.py
+│   │   ├── train_rewts_llm_rl.py
+│   │   ├── create_training_vm.sh
+│   │   ├── build_docker_images.sh
+│   │   └── setup_existing_vm.sh
+│   ├── live/              # 🟡 Paper trading live (daily/hourly)
+│   │   ├── get_live_strategy.py
+│   │   └── run_paper_trading.py
+│   ├── backtesting/       # 🟠 Backtesting e review (settimanale)
+│   │   ├── backtest_ensemble.py
+│   │   ├── backtest_multi_ticker.py
+│   │   ├── run_remote_backtest.py
+│   │   └── backtest_utils.py
+│   ├── monitoring/        # 🔴 Monitor costi e status (continuo)
+│   │   └── check_costs.sh
+│   └── utils/             # 🔧 Utilities varie
+│       └── manage_vm.sh
 ├── configs/
 │   └── hybrid/
 │       └── rewts_llm_rl.yaml # Configurazione
@@ -131,44 +151,111 @@ export GEMINI_API_KEY=your_actual_gemini_api_key_here  # Linux/Mac
 
 ## Utilizzo
 
-### Step 1: Download dei Dati
+Gli scripts sono organizzati per workflow e frequenza d'uso. Per una guida completa, consulta **[scripts/README.md](scripts/README.md)**.
+
+### 🔵 Setup Iniziale (Una Tantum - ~30 min)
 
 ```bash
-python scripts/download_data.py
+bash scripts/setup/01_setup_gcp_project.sh       # Setup GCP project
+bash scripts/setup/02_create_storage_buckets.sh  # Create storage buckets
+bash scripts/setup/03_setup_secrets.sh           # Save API keys in Secret Manager
+bash scripts/setup/04_deploy_backtesting_vm.sh   # Deploy backtesting VM
 ```
 
-Questo script scarica:
+**Verifica API keys:**
+```bash
+python scripts/setup/verify_api_keys.py
+```
+
+### 🟢 Training Mensile (~18 ore - $8/run)
+
+**Step 1: Download dei Dati**
+
+```bash
+python scripts/training/download_data.py
+```
+
+Scarica:
 - Dati OHLCV da Yahoo Finance
 - Indicatori tecnici (SMA, RSI, MACD, ATR)
 - Dati SPX e VIX per context macro
 - News mock (da sostituire con dati reali se disponibili)
 
-### Step 2: Training del Sistema
+**Step 2: Training del Sistema**
 
 ```bash
-python scripts/train_rewts_llm_rl.py
+python scripts/training/train_rewts_llm_rl.py
 ```
 
-Questo script:
+Esegue:
 1. Pre-computa le strategie LLM usando Google Gemini
 2. Divide i dati in chunks temporali
 3. Addestra un DDQN agent per ogni chunk
 4. Salva l'ensemble di modelli
 
-**Nota**: Il training può richiedere diverse ore a seconda del numero di ticker e chunk.
-
-### Step 3: Backtesting
+**Nota**: Il training può richiedere diverse ore. Per training su GPU remoto:
 
 ```bash
-python scripts/backtest_ensemble.py
+bash scripts/training/create_training_vm.sh   # Crea VM con GPU
+# SSH into VM, poi esegui download_data.py e train_rewts_llm_rl.py
 ```
 
-Questo script:
+### 🟠 Backtesting Settimanale (~10 min)
+
+**Step 3: Backtesting**
+
+```bash
+python scripts/backtesting/backtest_ensemble.py
+```
+
+Esegue:
 1. Carica l'ensemble addestrato
 2. Esegue backtesting sul test set (30% dei dati)
 3. Ottimizza i pesi ensemble dinamicamente
 4. Calcola metriche di performance (Sharpe Ratio, Max Drawdown, Cumulative Return)
 5. Genera visualizzazioni
+
+**Backtesting multi-ticker:**
+```bash
+python scripts/backtesting/backtest_multi_ticker.py
+```
+
+**Backtesting remoto (su VM dedicata):**
+```bash
+python scripts/backtesting/run_remote_backtest.py
+```
+
+### 🟡 Live Strategies (Daily/Hourly - $0.001/call)
+
+**Get strategie live per un singolo ticker:**
+```bash
+export GEMINI_API_KEY="your_key"
+python scripts/live/get_live_strategy.py --ticker AAPL
+```
+
+**Get strategie live per tutti i ticker:**
+```bash
+python scripts/live/get_live_strategy.py --all
+```
+
+**Paper Trading automatico (Alpaca):**
+```bash
+python scripts/live/run_paper_trading.py
+```
+
+### 🔴 Monitoring Continuo
+
+**Check costi e status VMs:**
+```bash
+bash scripts/monitoring/check_costs.sh
+```
+
+**VM management utilities:**
+```bash
+bash scripts/utils/manage_vm.sh status    # VM status
+bash scripts/utils/manage_vm.sh logs      # View logs
+bash scripts/utils/manage_vm.sh ip        # Get IP address
+```
 
 ### Risultati
 

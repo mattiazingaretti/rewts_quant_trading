@@ -63,20 +63,70 @@ Hai accesso completo alla documentazione delle metriche in `Financial_Metrics_Gu
 
 #### File Chiave
 ```
-src/llm_agents/strategist_agent.py  # LLM strategist con Gemini
-src/llm_agents/analyst_agent.py     # LLM analyst per news
-src/rl_agents/ddqn_agent.py         # DDQN implementation
-src/hybrid_model/ensemble_controller.py  # ReWTSE ensemble
-scripts/train_rewts_llm_rl.py       # Training pipeline
-scripts/backtest_ensemble.py        # Backtesting
-configs/hybrid/rewts_llm_rl.yaml    # Configurazione
+src/llm_agents/strategist_agent.py           # LLM strategist con Gemini
+src/llm_agents/analyst_agent.py              # LLM analyst per news
+src/rl_agents/ddqn_agent.py                  # DDQN implementation
+src/hybrid_model/ensemble_controller.py      # ReWTSE ensemble
+configs/hybrid/rewts_llm_rl.yaml             # Configurazione
+
+# Scripts organizzati per workflow (vedi scripts/README.md per dettagli)
+scripts/setup/01_setup_gcp_project.sh        # Setup GCP project
+scripts/setup/02_create_storage_buckets.sh   # Setup storage buckets
+scripts/setup/03_setup_secrets.sh            # Setup API keys in Secret Manager
+scripts/setup/verify_api_keys.py             # Verifica API keys
+
+scripts/training/download_data.py            # Download data da Yahoo Finance
+scripts/training/train_rewts_llm_rl.py       # Training pipeline
+scripts/training/create_training_vm.sh       # Crea VM con GPU per training
+
+scripts/backtesting/backtest_ensemble.py     # Backtesting locale
+scripts/backtesting/backtest_multi_ticker.py # Backtesting multi-ticker
+scripts/backtesting/run_remote_backtest.py   # Backtesting remoto su VM
+
+scripts/live/get_live_strategy.py            # Get strategie live (Gemini)
+scripts/live/run_paper_trading.py            # Paper trading automatico (Alpaca)
+
+scripts/monitoring/check_costs.sh            # Monitor costi GCP
+scripts/utils/manage_vm.sh                   # VM management utilities
 ```
 
 #### Workflow Tipico
-1. **Download data**: `python scripts/download_data.py`
-2. **Training**: `python scripts/train_rewts_llm_rl.py`
-3. **Backtesting**: `python scripts/backtest_ensemble.py`
-4. **Paper Trading**: `python scripts/run_alpaca_paper_trading.py`
+
+**🔵 Setup Iniziale (Una Tantum)**
+```bash
+bash scripts/setup/01_setup_gcp_project.sh
+bash scripts/setup/02_create_storage_buckets.sh
+bash scripts/setup/03_setup_secrets.sh
+bash scripts/setup/04_deploy_backtesting_vm.sh
+python scripts/setup/verify_api_keys.py
+```
+
+**🟢 Training Mensile (1 volta/mese)**
+1. **Download data**: `python scripts/training/download_data.py`
+2. **Training**: `python scripts/training/train_rewts_llm_rl.py`
+
+   *Per training su GPU remoto:*
+   ```bash
+   bash scripts/training/create_training_vm.sh
+   # SSH into VM, poi esegui download e training
+   ```
+
+**🟠 Backtesting Settimanale (1 volta/settimana)**
+3. **Backtesting**: `python scripts/backtesting/backtest_ensemble.py`
+4. **Multi-ticker**: `python scripts/backtesting/backtest_multi_ticker.py`
+5. **Remote**: `python scripts/backtesting/run_remote_backtest.py`
+
+**🟡 Live Strategies (Daily/Hourly)**
+6. **Get Live Strategy**:
+   ```bash
+   python scripts/live/get_live_strategy.py --ticker AAPL   # Single ticker
+   python scripts/live/get_live_strategy.py --all           # All tickers
+   ```
+7. **Paper Trading**: `python scripts/live/run_paper_trading.py`
+
+**🔴 Monitoring Continuo**
+8. **Check costs**: `bash scripts/monitoring/check_costs.sh`
+9. **VM status**: `bash scripts/utils/manage_vm.sh status`
 
 ### 5. Configurazione
 
@@ -104,17 +154,30 @@ trading_env:
 
 ### 6. Troubleshooting Comune
 
-#### Out of Memory
-- Ridurre `batch_size` e `buffer_size` nel config
-- Usare GPU con più VRAM (consigliato: RTX 3060 12GB)
+#### Setup e API Keys
+- **Verifica API keys**: `python scripts/setup/verify_api_keys.py`
+- **Check secrets GCP**: Verifica che le API keys siano salvate in Secret Manager
+- **Problemi con .env**: Assicurati che `GEMINI_API_KEY` sia esportato nell'ambiente
+
+#### Training Issues
+- **Out of Memory**: Ridurre `batch_size` e `buffer_size` nel config
+- **GPU non disponibile**: Usare `scripts/training/create_training_vm.sh` per GPU remoto
+- **Training troppo lento**: Usare GPU con più VRAM (consigliato: RTX 3060 12GB)
 
 #### Gemini API Rate Limits
 - Aggiungere `time.sleep(1)` tra chiamate API
 - Usare strategie pre-computate per backtesting
+- Verificare quota API su Google Cloud Console
 
 #### QP Solver Non Converge
 - Il sistema usa automaticamente uniform weights come fallback
 - Verificare che `lookback_length` sia sufficiente
+
+#### GCP e VM Issues
+- **Check VM status**: `bash scripts/utils/manage_vm.sh status`
+- **Check costs**: `bash scripts/monitoring/check_costs.sh`
+- **VM non risponde**: Verificare firewall rules e IP address
+- **SSH fails**: Ottenere nuovo IP con `bash scripts/utils/manage_vm.sh ip`
 
 ### 7. Interpretazione Risultati
 
@@ -158,24 +221,43 @@ Basato sui paper originali:
 1. **Setup e Configurazione**
    - Installazione dependencies
    - Configurazione API keys (Gemini, Alpaca)
+   - Setup GCP project e VM (scripts/setup/)
    - Setup dell'ambiente virtuale
+   - Verifica API keys (scripts/setup/verify_api_keys.py)
 
-2. **Debugging**
+2. **Training e Data**
+   - Download data (scripts/training/download_data.py)
+   - Training modelli (scripts/training/train_rewts_llm_rl.py)
+   - Setup VM con GPU per training (scripts/training/create_training_vm.sh)
    - Errori durante training
+
+3. **Backtesting e Analisi**
+   - Backtesting locale (scripts/backtesting/backtest_ensemble.py)
+   - Backtesting multi-ticker (scripts/backtesting/backtest_multi_ticker.py)
+   - Backtesting remoto (scripts/backtesting/run_remote_backtest.py)
+   - Interpretazione risultati
+   - Spiegazione metriche finanziarie
+
+4. **Live Trading e Strategie**
+   - Get strategie live (scripts/live/get_live_strategy.py)
+   - Paper trading automatico (scripts/live/run_paper_trading.py)
+   - Integrazione Alpaca API
+   - Problemi con API calls
+
+5. **Monitoring e VM Management**
+   - Check costi GCP (scripts/monitoring/check_costs.sh)
+   - VM status e management (scripts/utils/manage_vm.sh)
+   - Issues con VMs e risorse GCP
+
+6. **Debugging**
    - Problemi con API calls
    - Issues con QP optimization
+   - Errori di runtime
 
-3. **Analisi Metriche**
-   - Interpretazione risultati backtesting
-   - Spiegazione metriche finanziarie
-   - Comparazione strategie
-
-4. **Estensioni**
+7. **Estensioni e Ottimizzazione**
    - Aggiunta nuovi ticker
    - Modifiche agli agent prompts
    - Integrazione nuove fonti dati
-
-5. **Ottimizzazione**
    - Tuning hyperparameters
    - Miglioramento performance
    - Riduzione memory usage

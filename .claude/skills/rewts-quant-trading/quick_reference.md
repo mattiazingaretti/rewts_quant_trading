@@ -138,3 +138,104 @@ transaction_cost: 0.001     # 0.1% per trade
 temperature: 0.0            # Deterministico
 llm_model: gemini-2.0-flash-exp
 ```
+
+---
+
+## Scripts Quick Commands
+
+### 🔵 Setup (Una Tantum)
+```bash
+# Setup completo GCP
+bash scripts/setup/01_setup_gcp_project.sh
+bash scripts/setup/02_create_storage_buckets.sh
+bash scripts/setup/03_setup_secrets.sh
+bash scripts/setup/04_deploy_backtesting_vm.sh
+
+# Verifica API keys
+python scripts/setup/verify_api_keys.py
+```
+
+### 🟢 Training (Mensile)
+```bash
+# Download data
+python scripts/training/download_data.py
+
+# Training locale
+python scripts/training/train_rewts_llm_rl.py
+
+# Training su VM remoto con GPU
+bash scripts/training/create_training_vm.sh
+# SSH into VM, poi esegui download e training
+```
+
+### 🟠 Backtesting (Settimanale)
+```bash
+# Backtesting singolo ticker
+python scripts/backtesting/backtest_ensemble.py
+
+# Backtesting multi-ticker
+python scripts/backtesting/backtest_multi_ticker.py
+
+# Backtesting remoto su VM dedicata
+python scripts/backtesting/run_remote_backtest.py
+```
+
+### 🟡 Live Strategies (Daily/Hourly)
+```bash
+# Get strategy per un ticker
+python scripts/live/get_live_strategy.py --ticker AAPL
+
+# Get strategies per tutti i ticker
+python scripts/live/get_live_strategy.py --all
+
+# Paper trading automatico (Alpaca)
+python scripts/live/run_paper_trading.py
+```
+
+### 🔴 Monitoring (Continuo)
+```bash
+# Check costi GCP
+bash scripts/monitoring/check_costs.sh
+
+# VM management
+bash scripts/utils/manage_vm.sh status    # Status VMs
+bash scripts/utils/manage_vm.sh logs      # View logs
+bash scripts/utils/manage_vm.sh ip        # Get IP address
+bash scripts/utils/manage_vm.sh stop      # Stop VM
+bash scripts/utils/manage_vm.sh start     # Start VM
+```
+
+---
+
+## Workflow Mensile Tipico
+
+### Week 1: Training (~18h, $8)
+```bash
+bash scripts/training/create_training_vm.sh
+# SSH, download, train
+```
+
+### Week 2-4: Live Trading (daily, $0.001/call)
+```bash
+python scripts/live/get_live_strategy.py --all
+```
+
+### Weekend: Review (weekly, 10min, $0)
+```bash
+python scripts/backtesting/backtest_multi_ticker.py
+bash scripts/monitoring/check_costs.sh
+```
+
+---
+
+## Costi Stimati
+
+| Operazione | Frequenza | Tempo | Costo |
+|-----------|-----------|-------|-------|
+| Setup GCP | Una tantum | 30 min | $0 |
+| Training | Mensile | 18h | $8 |
+| Live Strategy | Daily | Istantaneo | $0.001 |
+| Backtesting | Settimanale | 10 min | $0 |
+| Monitoring | Daily | 1 min | $0 |
+
+**Costo mensile totale stimato**: ~$10-15/mese

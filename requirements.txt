@@ -1,7 +1,8 @@
 # Core dependencies per ReWTSE-LLM-RL
 
-# Google Gemini API
-google-generativeai>=0.3.0
+# LLM APIs
+google-generativeai>=0.3.0  # For Gemini
+openai>=1.0.0               # For DeepSeek (OpenAI-compatible)
 
 # Machine Learning & RL
 torch>=2.0.0
