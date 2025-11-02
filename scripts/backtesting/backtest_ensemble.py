@@ -8,6 +8,7 @@ import pickle
 from tqdm import tqdm
 import sys
 import os
+import argparse
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -118,16 +119,26 @@ def backtest_ensemble(ticker, ensemble, market_df, strategies, config):
 def main():
     """Main backtesting pipeline"""
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Backtest ReWTSE ensemble on a specific ticker')
+    parser.add_argument('ticker', type=str, help='Stock ticker symbol (e.g., AAPL, GOOGL)')
+    parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance (default: 10000)')
+    parser.add_argument('--transaction-cost', type=float, default=0.001, help='Transaction cost (default: 0.001)')
+    parser.add_argument('--chunk-length', type=int, default=500, help='ReWTS chunk length (default: 500)')
+    parser.add_argument('--lookback-length', type=int, default=100, help='Lookback window (default: 100)')
+
+    args = parser.parse_args()
+
     config = {
-        'tickers': ['AAPL'],
+        'tickers': [args.ticker.upper()],
         'rewts': {
-            'chunk_length': 500,
-            'lookback_length': 100,
+            'chunk_length': args.chunk_length,
+            'lookback_length': args.lookback_length,
             'forecast_horizon': 1
         },
         'trading_env': {
-            'initial_balance': 10000,
-            'transaction_cost': 0.001,
+            'initial_balance': args.initial_balance,
+            'transaction_cost': args.transaction_cost,
             'max_position': 1.0
         },
         'strategy_frequency': 20
