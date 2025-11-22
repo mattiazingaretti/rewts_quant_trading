@@ -5,6 +5,10 @@ Script per eseguire Paper Trading Real-Time con Alpaca
 import sys
 import os
 import pickle
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -186,16 +190,21 @@ def main():
     args = parser.parse_args()
 
     # Get API keys from args or environment
-    api_key = args.api_key or os.getenv('ALPACA_API_KEY')
-    secret_key = args.secret_key or os.getenv('ALPACA_SECRET_KEY')
+    # Support both ALPACA_API_KEY and ALPACA_KEY for backward compatibility
+    api_key = args.api_key or os.getenv('ALPACA_API_KEY') or os.getenv('ALPACA_KEY')
+    secret_key = args.secret_key or os.getenv('ALPACA_SECRET_KEY') or os.getenv('ALPACA_SECRET')
 
     if not api_key or not secret_key:
         print("❌ Errore: API keys mancanti!")
         print("\nOpzioni:")
-        print("1. Passa come argomenti: --api-key YOUR_KEY --secret-key YOUR_SECRET")
-        print("2. Imposta environment variables:")
-        print("   export ALPACA_API_KEY=your_key")
-        print("   export ALPACA_SECRET_KEY=your_secret")
+        print("1. Aggiungi al file .env nella directory root:")
+        print("   ALPACA_KEY=your_key")
+        print("   ALPACA_SECRET=your_secret")
+        print("   (oppure ALPACA_API_KEY e ALPACA_SECRET_KEY)")
+        print("\n2. Passa come argomenti: --api-key YOUR_KEY --secret-key YOUR_SECRET")
+        print("\n3. Imposta environment variables:")
+        print("   export ALPACA_KEY=your_key")
+        print("   export ALPACA_SECRET=your_secret")
         print("\n📚 Ottieni le keys gratuite su: https://app.alpaca.markets/paper/dashboard/overview")
         return
 

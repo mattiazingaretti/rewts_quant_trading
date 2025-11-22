@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import pandas as pd
 import time
+import numpy as np
 
 
 class AlpacaPaperTrader:
@@ -302,8 +303,10 @@ class AlpacaPaperTrader:
 
         data = response.json()
 
-        if 'bars' in data and len(data['bars']) > 0:
-            df = pd.DataFrame(data['bars'])
+        # Check if data contains bars and bars is not None
+        bars = data.get('bars')
+        if bars is not None and len(bars) > 0:
+            df = pd.DataFrame(bars)
             df['timestamp'] = pd.to_datetime(df['t'])
             df = df.rename(columns={
                 'o': 'open',
@@ -375,7 +378,7 @@ class AlpacaPaperTrader:
         if action == 'LONG':
             # Chiudi posizione short se presente
             if current_position and float(current_position.get('qty', 0)) < 0:
-                close_result = self.close_position(symbol)
+                self.close_position(symbol)
                 result['message'] += f"Chiusa posizione SHORT. "
 
             # Apri posizione LONG
@@ -392,7 +395,7 @@ class AlpacaPaperTrader:
         elif action == 'SHORT':
             # Chiudi posizione long se presente
             if current_position and float(current_position.get('qty', 0)) > 0:
-                close_result = self.close_position(symbol)
+                self.close_position(symbol)
                 result['message'] += f"Chiusa posizione LONG. "
 
             result['message'] += "SHORT non implementato in paper trading (richiede margin)"
@@ -443,8 +446,15 @@ class AlpacaPaperTradingBackend:
                 try:
                     bars = self.trader.get_bars(ticker, timeframe="1Day", limit=200)
 
-                    if bars.empty:
+                    if bars is None or bars.empty:
                         print(f"⚠️ Nessun dato disponibile per {ticker}")
+                        print(f"   Possibile causa: mercato chiuso o ticker non valido")
+                        time.sleep(check_interval)
+                        continue
+
+                    if len(bars) < 50:
+                        print(f"⚠️ Dati insufficienti per {ticker} (solo {len(bars)} bars)")
+                        print(f"   Richiesti almeno 50 bars per calcolare indicatori")
                         time.sleep(check_interval)
                         continue
 

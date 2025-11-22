@@ -109,6 +109,7 @@ def backtest_ensemble(ticker, ensemble, market_df, strategies, config):
     metrics['portfolio_values'] = portfolio_values
     metrics['actions'] = actions_taken
     metrics['weights_history'] = weights_history
+    metrics['dates'] = test_df.index.tolist()  # Pass dates for plotting
 
     # Print summary
     print_backtest_summary(ticker, metrics, test_env.initial_balance)

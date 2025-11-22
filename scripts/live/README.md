@@ -1,23 +1,23 @@
 # Live Strategy Scripts - Daily/Hourly
 
-Scripts per ottenere strategie di trading in tempo reale dagli agent LLM.
+Scripts per ottenere strategie di trading in tempo reale dagli agent LLM basati su **DeepSeek-V3**.
 
 **Frequenza**: Daily o Hourly
 **Tempo**: Istantaneo (2-5 secondi)
-**Costo**: ~$0.001/call
+**Costo**: ~$0.0002/call (DeepSeek)
 
 ---
 
 ## 📋 Scripts
 
 ### `get_live_strategy.py`
-Interroga Strategist + Analyst agents per strategie live.
+Interroga Strategist + Analyst agents (powered by **DeepSeek-V3**) per strategie live.
 
 **Cosa fa**:
 1. Fetch latest market data (Yahoo Finance)
 2. Fetch latest news (Yahoo Finance)
-3. Strategist Agent: Analizza market + fundamentals
-4. Analyst Agent: Analizza news + sentiment
+3. Strategist Agent (DeepSeek): Analizza market data + technical indicators
+4. Analyst Agent (DeepSeek): Analizza news + sentiment
 5. Combina risultati → raccomandazione LONG/SHORT
 
 **Output**:
@@ -33,7 +33,7 @@ Interroga Strategist + Analyst agents per strategie live.
 
 ### Single Ticker
 ```bash
-export GEMINI_API_KEY="your_key_here"
+export DEEPSEEK_API_KEY="your_key_here"
 python get_live_strategy.py --ticker AAPL
 ```
 
@@ -114,7 +114,7 @@ from scripts.live.get_live_strategy import get_live_strategy
 import os
 
 # Set API key
-os.environ['GEMINI_API_KEY'] = 'your_key_here'
+os.environ['DEEPSEEK_API_KEY'] = 'your_key_here'
 
 # Get strategy
 strategy = get_live_strategy('AAPL', verbose=True)
@@ -149,7 +149,7 @@ python get_live_strategy.py --ticker AAPL
 ```
 
 **Frequency**: Every hour
-**Cost**: 6.5 hours × 5 days × 4 weeks = 130 calls/month = **$0.13/month**
+**Cost**: 6.5 hours × 5 days × 4 weeks = 130 calls/month = **$0.026/month**
 
 ### Swing Trading (Recommended)
 ```bash
@@ -159,7 +159,7 @@ python get_live_strategy.py --all
 ```
 
 **Frequency**: Daily
-**Cost**: 60 calls/month = **$0.06/month**
+**Cost**: 60 calls/month = **$0.012/month**
 
 ### Position Trading
 ```bash
@@ -169,7 +169,7 @@ python get_live_strategy.py --all
 ```
 
 **Frequency**: Weekly
-**Cost**: 8 calls/month = **$0.008/month**
+**Cost**: 8 calls/month = **$0.0016/month**
 
 ---
 
@@ -223,19 +223,21 @@ if (strategy['recommendation'] == 'LONG' and
 ## 💰 Cost Analysis
 
 ### Pricing
-- **Gemini API**: $0.075 per 1M input tokens, $0.30 per 1M output tokens
+- **DeepSeek API**: $0.014 per 1M input tokens, $0.028 per 1M output tokens
 - **Average call**: ~5K input + 1K output tokens
-- **Cost per call**: ~$0.001
+- **Cost per call**: ~$0.0002
 
 ### Monthly Costs by Frequency
 
 | Frequency | Calls/Month | Cost |
 |-----------|-------------|------|
-| Hourly (6.5h/day) | 130 | $0.13 |
-| Daily (1/day) | 60 | $0.06 |
-| Weekly (1/week) | 8 | $0.008 |
+| Hourly (6.5h/day) | 130 | $0.026 |
+| Daily (1/day) | 60 | $0.012 |
+| Weekly (1/week) | 8 | $0.0016 |
 
-**Recommendation**: Daily è il sweet spot (sufficiente per swing trading, basso costo)
+**Recommendation**: Daily è il sweet spot (sufficiente per swing trading, bassissimo costo)
+
+**Nota**: DeepSeek è ~5x più economico di Gemini/GPT-4, mantenendo performance comparabili.
 
 ---
 
@@ -286,15 +288,15 @@ else:
     cache_strategy('AAPL', strategy)
 ```
 
-**Savings**: If market stable, 1 API call/hour instead of 1/call = 90% cost reduction
+**Savings**: Cache riduce chiamate API e costi (1 call/hour invece di multiple)
 
 ---
 
 ## 🚨 Troubleshooting
 
-### "GEMINI_API_KEY not set"
+### "DEEPSEEK_API_KEY not set"
 ```bash
-export GEMINI_API_KEY="your_key_here"
+export DEEPSEEK_API_KEY="your_key_here"
 # Or add to ~/.bashrc or ~/.zshrc
 ```
 
@@ -322,14 +324,42 @@ Remember:
 ## 📚 Next Steps
 
 After getting live strategies:
-```bash
-# Review backtesting performance
-cd ../backtesting
-python run_backtest.py
+- Review backtesting results in `results/backtest_report.csv`
+- Experiment with different confidence thresholds
+- Integrate with paper trading using `run_paper_trading.py`
+- Monitor costs through DeepSeek API dashboard
 
-# Check costs
-cd ../monitoring
-bash check_costs.sh
+For more info, see project documentation.
+
+---
+
+## 🔄 Changelog - DeepSeek Integration
+
+### Modifiche apportate (2025-11)
+
+**Script aggiornati**:
+- `get_live_strategy.py`: Migrato da Gemini a DeepSeek API
+  - Cambiato check variabile ambiente: `GEMINI_API_KEY` → `DEEPSEEK_API_KEY`
+  - Utilizzo degli agent: `StrategistAgent` e `AnalystAgent` ora basati su DeepSeek-V3
+  - Nessuna modifica alla logica interna (gli agent deepseek hanno stessa interfaccia)
+
+**Vantaggi di DeepSeek**:
+- **5x più economico**: $0.0002/call vs $0.001/call (Gemini)
+- **Performance comparabili**: DeepSeek-V3 rivalizza con GPT-4 e Gemini Pro
+- **Stessa interfaccia**: Drop-in replacement, nessun cambio di codice necessario
+- **Stesso rate limit**: 8 req/s supportato nativamente
+
+**Setup richiesto**:
+```bash
+# Prima (Gemini)
+export GEMINI_API_KEY="your_key"
+
+# Ora (DeepSeek)
+export DEEPSEEK_API_KEY="your_key"
 ```
 
-Or read: `../../TRAINING_AND_LIVE_USAGE_GUIDE.md`
+**Nessun altro cambiamento**:
+- Input/output identici
+- Stessi parametri e configurazioni
+- Stessi risultati di output (strategy, confidence, reasoning)
+- Compatibile con tutti gli script esistenti che usano gli agent

@@ -129,8 +129,8 @@ def get_live_strategy(ticker: str, verbose: bool = True):
         config = yaml.safe_load(f)
 
     # Ensure API key is set
-    if not os.getenv('GEMINI_API_KEY'):
-        raise ValueError("GEMINI_API_KEY environment variable not set")
+    if not os.getenv('DEEPSEEK_API_KEY'):
+        raise ValueError("DEEPSEEK_API_KEY environment variable not set")
 
     # Initialize agents
     if verbose:
@@ -287,9 +287,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Load API key from environment
-    if not os.getenv('GEMINI_API_KEY'):
-        print("❌ GEMINI_API_KEY not set!")
-        print("Set it with: export GEMINI_API_KEY='your_key_here'")
+    if not os.getenv('DEEPSEEK_API_KEY'):
+        print("❌ DEEPSEEK_API_KEY not set!")
+        print("Set it with: export DEEPSEEK_API_KEY='your_key_here'")
         sys.exit(1)
 
     if args.ticker:

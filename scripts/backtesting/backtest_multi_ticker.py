@@ -10,14 +10,19 @@ import numpy as np
 from pathlib import Path
 
 # Add src to path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
+# Add scripts to path for backtesting imports
+scripts_dir = Path(__file__).parent.parent
+sys.path.append(str(scripts_dir))
 
 from src.rl_agents.trading_env import TradingEnv
 from src.utils.data_utils import load_market_data, load_news_data
 from backtesting.backtest_utils import (
     calculate_comprehensive_metrics,
+    calculate_extended_metrics,
     plot_multi_ticker_comparison,
+    plot_extended_metrics_dashboard,
     save_backtest_report
 )
 
@@ -94,6 +99,9 @@ def evaluate_ticker(ticker, model_path, config):
 
     metrics = calculate_comprehensive_metrics(eval_env.portfolio_history, initial_balance)
 
+    # Calculate extended metrics from market data
+    extended_metrics = calculate_extended_metrics(market_df)
+
     # Action distribution
     action_names = ['SHORT', 'HOLD', 'LONG']
     action_counts = np.bincount(actions_taken, minlength=3)
@@ -117,6 +125,21 @@ def evaluate_ticker(ticker, model_path, config):
     print(f"\nAction Distribution:")
     for name, stats in action_distribution.items():
         print(f"  {name:6s}: {stats['count']:4d} ({stats['pct']:5.1f}%)")
+
+    # Print key extended metrics
+    if extended_metrics:
+        print(f"\nExtended Metrics:")
+        if 'Beta' in extended_metrics:
+            print(f"  Beta:                {extended_metrics['Beta']:.2f}")
+        if 'RSI_avg' in extended_metrics:
+            print(f"  Avg RSI:             {extended_metrics['RSI_avg']:.1f}")
+        if 'PE_Ratio_avg' in extended_metrics:
+            print(f"  Avg P/E Ratio:       {extended_metrics['PE_Ratio_avg']:.1f}")
+        if 'VIX_Close_avg' in extended_metrics:
+            print(f"  Avg VIX:             {extended_metrics['VIX_Close_avg']:.1f}")
+        if 'Price_Change_%' in extended_metrics:
+            print(f"  Stock Price Change:  {extended_metrics['Price_Change_%']:.2f}%")
+
     print(f"{'='*60}")
 
     return {
@@ -124,6 +147,7 @@ def evaluate_ticker(ticker, model_path, config):
         'initial_balance': initial_balance,
         'final_value': final_value,
         'metrics': metrics,
+        'extended_metrics': extended_metrics,
         'action_distribution': action_distribution,
         'portfolio_history': eval_env.portfolio_history,
         'num_chunks': len(ensemble.chunk_models)
@@ -174,9 +198,13 @@ def main():
     # Save report and plots usando utility condivise
     save_backtest_report(results)
     plot_multi_ticker_comparison(results)
+    plot_extended_metrics_dashboard(results)
 
     print(f"\n{'='*80}")
     print("✓ Multi-ticker backtest complete!")
+    print(f"  - Backtest report: results/backtest_report.csv")
+    print(f"  - Performance comparison: results/multi_ticker_comparison.png")
+    print(f"  - Extended metrics dashboard: results/extended_metrics_dashboard.png")
     print(f"{'='*80}")
 
 
