@@ -1,18 +1,18 @@
 # ReWTSE-LLM-RL: Hybrid Trading System
 
-Sistema di trading ibrido che integra **ReWTSE** (ensemble temporale), **LLM Agents** (Google Gemini per strategia) e **RL Agents** (DDQN per esecuzione) per il trading algoritmico.
+Sistema di trading ibrido che integra **ReWTSE** (ensemble temporale), **LLM Agents** (DeepSeek per strategia) e **RL Agents** (DDQN per esecuzione) per il trading algoritmico.
 
 ## Architettura
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│            Strategist Agent (Google Gemini)             │
+│            Strategist Agent (DeepSeek)                  │
 │  - Genera strategie mensili (πg)                        │
 │  - Input: Market data, Fundamentals, Analytics          │
 └────────────────────┬────────────────────────────────────┘
                      │
          ┌───────────▼──────────────┐
-         │   Analyst Agent (Gemini) │
+         │  Analyst Agent (DeepSeek)│
          │  - Processa news          │
          │  - Genera segnali         │
          └───────────┬──────────────┘
@@ -35,7 +35,7 @@ Sistema di trading ibrido che integra **ReWTSE** (ensemble temporale), **LLM Age
 
 ## Caratteristiche Principali
 
-- **LLM Agents con Google Gemini 2.5 Flash**: Strategist e Analyst utilizzano Gemini invece di GPT-4o
+- **LLM Agents con DeepSeek-V3**: Strategist e Analyst utilizzano DeepSeek per generazione strategie
 - **ReWTSE Ensemble**: Specializzazione temporale tramite chunk-based training
 - **DDQN Agents**: Esecuzione tattica delle decisioni di trading
 - **QP Optimization**: Ottimizzazione dei pesi ensemble tramite programmazione quadratica
@@ -46,56 +46,59 @@ Sistema di trading ibrido che integra **ReWTSE** (ensemble temporale), **LLM Age
 ```
 .
 ├── src/
-│   ├── llm_agents/           # LLM agents (Gemini)
-│   │   ├── strategist_agent.py
-│   │   └── analyst_agent.py
+│   ├── llm_agents/           # LLM agents (DeepSeek)
+│   │   ├── strategist_agent_deepseek.py
+│   │   └── analyst_agent_deepseek.py
 │   ├── rl_agents/            # RL agents (DDQN)
 │   │   ├── ddqn_agent.py
 │   │   └── trading_env.py
 │   ├── trading/              # Alpaca paper trading integration
 │   │   └── alpaca_paper_trader.py
-│   └── hybrid_model/         # ReWTSE ensemble
-│       └── ensemble_controller.py
+│   ├── hybrid_model/         # ReWTSE ensemble
+│   │   └── ensemble_controller.py
+│   └── utils/                # Utilities
+│       ├── data_utils.py
+│       ├── rate_limiter.py
+│       └── strategy_cache.py
 ├── scripts/
-│   ├── setup/              # 🔵 Setup iniziale GCP (una tantum)
-│   │   ├── 01_setup_gcp_project.sh
+│   ├── setup/              # 🔵 Setup iniziale
 │   │   ├── 02_create_storage_buckets.sh
-│   │   ├── 03_setup_secrets.sh
-│   │   ├── 04_deploy_backtesting_vm.sh
 │   │   └── verify_api_keys.py
-│   ├── training/           # 🟢 Training modelli (mensile)
+│   ├── training/           # 🟢 Training modelli
 │   │   ├── download_data.py
-│   │   ├── train_rewts_llm_rl.py
-│   │   ├── create_training_vm.sh
-│   │   ├── build_docker_images.sh
-│   │   └── setup_existing_vm.sh
-│   ├── live/              # 🟡 Paper trading live (daily/hourly)
+│   │   └── train_rewts_llm_rl.py
+│   ├── live/               # 🟡 Paper trading live
 │   │   ├── get_live_strategy.py
 │   │   └── run_paper_trading.py
-│   ├── backtesting/       # 🟠 Backtesting e review (settimanale)
+│   ├── backtesting/        # 🟠 Backtesting
 │   │   ├── backtest_ensemble.py
 │   │   ├── backtest_multi_ticker.py
-│   │   ├── run_remote_backtest.py
 │   │   └── backtest_utils.py
-│   ├── monitoring/        # 🔴 Monitor costi e status (continuo)
-│   │   └── check_costs.sh
-│   └── utils/             # 🔧 Utilities varie
-│       └── manage_vm.sh
+│   └── utils/              # 🔧 Utilities varie
+│       └── regenerate_strategies.py
+├── notebooks/                # Jupyter notebooks per training
+│   ├── train_rewts_deepseek.ipynb
+│   ├── train_rewts_complete.ipynb
+│   └── train_rewts_llm_rl.ipynb
+├── api/                      # FastAPI server
+│   └── fastapi_server.py
 ├── configs/
 │   └── hybrid/
 │       └── rewts_llm_rl.yaml # Configurazione
 ├── data/
 │   ├── raw/                  # Dati grezzi
 │   ├── processed/            # Dati preprocessati
-│   └── llm_strategies/       # Strategie LLM pre-computate
-├── models/                   # Modelli salvati
+│   ├── llm_strategies/       # Strategie LLM pre-computate
+│   └── cache/                # Cache dati
+├── models/                   # Modelli salvati (.pkl, .pt)
 ├── results/
 │   ├── metrics/              # Metriche performance
 │   └── visualizations/       # Grafici
-├── Financial_Metrics_Guide.md      # Guida metriche finanziarie
-├── Hardware_Requirements.md        # Requisiti hardware (GPU/VRAM)
-├── AI_Evaluation_Metrics.md        # Metriche valutazione AI
-├── Alpaca_Paper_Trading_Guide.md   # Guida paper trading
+├── docs/
+│   └── guides/               # Guide e documentazione
+│       ├── Alpaca_Paper_Trading_Guide.md
+│       └── ReWTSE-LLM-RL_Implementation_Guide.md
+├── DEEPSEEK_INTEGRATION.md   # Guida integrazione DeepSeek
 ├── requirements.txt
 └── README.md
 ```
@@ -124,50 +127,45 @@ pip install -r requirements.txt
 
 ### 4. Configura API Keys
 
-Crea un file `.env` nella root del progetto:
-
-```bash
-cp .env.example .env
-```
-
-Modifica `.env` e aggiungi la tua **Google Gemini API Key**:
+Crea un file `.env` nella root del progetto con le seguenti variabili:
 
 ```
-GEMINI_API_KEY=your_actual_gemini_api_key_here
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+ALPACA_KEY=your_alpaca_key_here
+ALPACA_SECRET=your_alpaca_secret_here
 ```
 
-**Come ottenere la Gemini API Key**:
-1. Vai su https://makersuite.google.com/app/apikey
-2. Accedi con il tuo account Google
-3. Crea una nuova API key
+**Come ottenere la DeepSeek API Key**:
+1. Vai su https://platform.deepseek.com
+2. Crea un account
+3. Genera una nuova API key
 4. Copia la key nel file `.env`
 
-### 5. Carica la API Key nell'ambiente
+**Come ottenere le Alpaca API Keys** (per paper trading):
+1. Vai su https://alpaca.markets
+2. Crea un account paper trading (gratuito)
+3. Genera le API keys
+4. Copia key e secret nel file `.env`
+
+### 5. Carica le API Keys nell'ambiente
 
 ```bash
-export GEMINI_API_KEY=your_actual_gemini_api_key_here  # Linux/Mac
-# set GEMINI_API_KEY=your_actual_gemini_api_key_here   # Windows
+export DEEPSEEK_API_KEY=your_deepseek_api_key_here  # Linux/Mac
+# set DEEPSEEK_API_KEY=your_deepseek_api_key_here   # Windows
 ```
 
 ## Utilizzo
 
 Gli scripts sono organizzati per workflow e frequenza d'uso. Per una guida completa, consulta **[scripts/README.md](scripts/README.md)**.
 
-### 🔵 Setup Iniziale (Una Tantum - ~30 min)
-
-```bash
-bash scripts/setup/01_setup_gcp_project.sh       # Setup GCP project
-bash scripts/setup/02_create_storage_buckets.sh  # Create storage buckets
-bash scripts/setup/03_setup_secrets.sh           # Save API keys in Secret Manager
-bash scripts/setup/04_deploy_backtesting_vm.sh   # Deploy backtesting VM
-```
+### 🔵 Setup Iniziale
 
 **Verifica API keys:**
 ```bash
 python scripts/setup/verify_api_keys.py
 ```
 
-### 🟢 Training Mensile (~18 ore - $8/run)
+### 🟢 Training
 
 **Step 1: Download dei Dati**
 
@@ -188,19 +186,20 @@ python scripts/training/train_rewts_llm_rl.py
 ```
 
 Esegue:
-1. Pre-computa le strategie LLM usando Google Gemini
+1. Pre-computa le strategie LLM usando DeepSeek
 2. Divide i dati in chunks temporali
 3. Addestra un DDQN agent per ogni chunk
 4. Salva l'ensemble di modelli
 
-**Nota**: Il training può richiedere diverse ore. Per training su GPU remoto:
+**Nota**: Il training può richiedere diverse ore. In alternativa, usa i notebooks su Google Colab:
 
 ```bash
-bash scripts/training/create_training_vm.sh   # Crea VM con GPU
-# SSH into VM, poi esegui download_data.py e train_rewts_llm_rl.py
+# Apri notebooks/train_rewts_deepseek.ipynb su Colab
+# Runtime → Change runtime type → GPU (T4)
+# Inserisci DEEPSEEK_API_KEY quando richiesto
 ```
 
-### 🟠 Backtesting Settimanale (~10 min)
+### 🟠 Backtesting
 
 **Step 3: Backtesting**
 
@@ -220,16 +219,11 @@ Esegue:
 python scripts/backtesting/backtest_multi_ticker.py
 ```
 
-**Backtesting remoto (su VM dedicata):**
-```bash
-python scripts/backtesting/run_remote_backtest.py
-```
-
-### 🟡 Live Strategies (Daily/Hourly - $0.001/call)
+### 🟡 Live Strategies
 
 **Get strategie live per un singolo ticker:**
 ```bash
-export GEMINI_API_KEY="your_key"
+export DEEPSEEK_API_KEY="your_key"
 python scripts/live/get_live_strategy.py --ticker AAPL
 ```
 
@@ -243,18 +237,11 @@ python scripts/live/get_live_strategy.py --all
 python scripts/live/run_paper_trading.py
 ```
 
-### 🔴 Monitoring Continuo
+### 🔧 Utilities
 
-**Check costi e status VMs:**
+**Rigenera strategie LLM:**
 ```bash
-bash scripts/monitoring/check_costs.sh
-```
-
-**VM management utilities:**
-```bash
-bash scripts/utils/manage_vm.sh status    # VM status
-bash scripts/utils/manage_vm.sh logs      # View logs
-bash scripts/utils/manage_vm.sh ip        # Get IP address
+python scripts/utils/regenerate_strategies.py
 ```
 
 ### Risultati
@@ -269,72 +256,52 @@ Il file `configs/hybrid/rewts_llm_rl.yaml` contiene tutti i parametri configurab
 
 ```yaml
 llm:
-  llm_model: "gemini-2.0-flash-exp"  # Modello Gemini
+  llm_model: "deepseek-chat"          # DeepSeek-V3
   temperature: 0.0                    # Temperature per generazione
 
 rewts:
-  chunk_length: 2016                  # Lunghezza chunk (14 giorni)
-  lookback_length: 432                # Look-back per QP optimization
-  episodes_per_chunk: 50              # Episodi di training per chunk
+  chunk_length: 400                   # ~2 trading years
+  lookback_length: 200                # ~1 trading year
+  episodes_per_chunk: 100             # Episodi di training per chunk
 
 trading_env:
   initial_balance: 10000              # Capital iniziale
-  transaction_cost: 0.001             # Costo transazione (0.1%)
+  transaction_cost: 0.0015            # Costo transazione (0.15%)
+  max_position: 0.95                  # Max 95% capital in position
+  max_drawdown_limit: 0.15            # Stop trading at 15% drawdown
 ```
 
 ## 📚 Documentazione
 
-### Guida alle Metriche Finanziarie
+### Guida Implementativa Completa
 
-Per una spiegazione dettagliata e semplice di tutte le metriche utilizzate dagli agenti LLM:
+Per una guida dettagliata sull'architettura e implementazione del sistema:
 
-**[Financial_Metrics_Guide.md](Financial_Metrics_Guide.md)**
-
-Questo documento spiega in termini semplici:
-- Dati di mercato (Close, Volume, Beta, HV, IV)
-- Analisi tecnica (MA, RSI, MACD, ATR)
-- Dati fondamentali (P/E, Debt-to-Equity, ROE, margins)
-- Dati macro-economici (SPX, VIX, GDP, PMI, PPI, Treasury Yields)
-- Metriche di performance (Sharpe Ratio, Max Drawdown, Cumulative Return)
-
-### Requisiti Hardware
-
-Per informazioni su GPU, VRAM e requisiti di sistema:
-
-**[Hardware_Requirements.md](Hardware_Requirements.md)**
-
-Include:
-- Requisiti minimi, consigliati e ottimali
-- Confronto GPU (CPU-only, 6GB, 12GB, 24GB VRAM)
-- Tempi di training stimati
-- Alternative cloud (Google Colab, AWS, Paperspace)
-- Raccomandazione: **RTX 3060 12GB** (~€350) per miglior rapporto qualità/prezzo
-
-### Metriche Valutazione AI
-
-Per capire come vengono valutati i modelli AI (RL, LLM, Ensemble):
-
-**[AI_Evaluation_Metrics.md](AI_Evaluation_Metrics.md)**
-
-Include:
-- Metriche Reinforcement Learning (Reward, Loss, Q-values, Epsilon)
-- Metriche LLM (Confidence, Entropy, Direction Accuracy)
-- Metriche Ensemble (Weight Distribution, QP Convergence, Diversity)
-- Metriche Trading (Sharpe, Max Drawdown, Win Rate, Profit Factor)
-- Metriche Generalizzazione (Cross-validation, Out-of-sample)
+**[docs/guides/ReWTSE-LLM-RL_Implementation_Guide.md](docs/guides/ReWTSE-LLM-RL_Implementation_Guide.md)**
 
 ### Paper Trading con Alpaca
 
 Per testare strategie nel mondo reale con denaro fittizio (100% GRATUITO):
 
-**[Alpaca_Paper_Trading_Guide.md](Alpaca_Paper_Trading_Guide.md)**
+**[docs/guides/Alpaca_Paper_Trading_Guide.md](docs/guides/Alpaca_Paper_Trading_Guide.md)**
 
 Include:
 - Setup account Alpaca (5 minuti, GRATUITO)
 - Configurazione API keys
 - Trading automatico live con modello addestrato
 - Esempi codice per trading manuale
-- Costo: **€0** (paper trading completamente gratuito)
+
+### Integrazione DeepSeek
+
+Per dettagli sull'integrazione con DeepSeek LLM:
+
+**[DEEPSEEK_INTEGRATION.md](DEEPSEEK_INTEGRATION.md)**
+
+Include:
+- Confronto costi DeepSeek vs Gemini
+- Setup API key
+- Notebooks per training su Colab
+- Token usage breakdown
 
 ## Metriche Target Attese
 
@@ -377,13 +344,12 @@ rewts:
   buffer_size: 5000   # invece di 10000
 ```
 
-### Problema: Gemini API rate limits
+### Problema: DeepSeek API rate limits
 
-**Soluzione**: Aggiungi delay tra chiamate in `train_rewts_llm_rl.py`:
+**Soluzione**: Il sistema include un rate limiter automatico in `src/utils/rate_limiter.py`. Se necessario, modifica `max_requests_per_second` in `configs/hybrid/rewts_llm_rl.yaml`:
 
-```python
-import time
-time.sleep(1)  # Pausa di 1 secondo tra chiamate
+```yaml
+max_requests_per_second: 8.0  # Riduci se hai rate limits
 ```
 
 ### Problema: QP solver non converge
@@ -405,8 +371,8 @@ Questo progetto è fornito "as-is" per scopi educativi e di ricerca.
 ## Contatti
 
 Per domande o supporto, consultare:
-- **ReWTSE-LLM-RL_Implementation_Guide.md**: Guida implementativa completa
-- **Financial_Metrics_Guide.md**: Spiegazione delle metriche finanziarie
+- **[docs/guides/ReWTSE-LLM-RL_Implementation_Guide.md](docs/guides/ReWTSE-LLM-RL_Implementation_Guide.md)**: Guida implementativa completa
+- **[DEEPSEEK_INTEGRATION.md](DEEPSEEK_INTEGRATION.md)**: Documentazione integrazione DeepSeek
 
 ---
 
